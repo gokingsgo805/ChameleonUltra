@@ -1,0 +1,17 @@
+{
+    "cmake.sourceDirectory": "C:/Users/Cobiwan Kenobi/Documents/GitHub/ChameleonUltra/software/src",
+    "chat.customAgentInSubagent.enabled": true,
+    "terminal.integrated.tabs.defaultColor": "terminal.ansiRed",
+    "terminal.integrated.suggest.selectionMode": "always",
+    "terminal.integrated.suggest.runOnEnter": "always",
+    "terminal.integrated.smoothScrolling": true,
+    "terminal.integrated.shellIntegration.environmentReporting": true,
+    "terminal.integrated.hideOnStartup": "whenEmpty",
+    "extensions.webWorker": true,
+    "scm.workingSets.enabled": true,
+    "terminal.integrated.shellIntegration.enabled": false,
+    "terminal.integrated.shellIntegration.decorationsEnabled": "never",
+    "terminal.integrated.shellIntegration.quickFixEnabled": false,
+    "terminal.integrated.stickyScroll.enabled": true,
+    "terminal.integrated.suggest.enabled": true
+}
