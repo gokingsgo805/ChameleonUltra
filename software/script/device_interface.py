@@ -5,11 +5,14 @@ Provides abstraction and utilities for device communication during fuzzing campa
 Supports device detection, validation, and advanced interaction patterns.
 """
 
-from typing import Optional, Dict, List, Tuple, Any
+from typing import Optional, Dict, Tuple, Any, TYPE_CHECKING
 from dataclasses import dataclass
 from enum import Enum
 import time
 import logging
+
+if TYPE_CHECKING:
+    from chameleon_enum import MfcKeyType
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +70,7 @@ class FuzzerSession:
 class DeviceInterface:
     """
     Abstraction layer for device communication during fuzzing.
-    
+
     Provides:
     - Device detection and validation
     - Connection management
@@ -79,7 +82,7 @@ class DeviceInterface:
     def __init__(self, cmd_instance):
         """
         Initialize device interface
-        
+
         Args:
             cmd_instance: ChameleonCMD instance for device communication
         """
@@ -88,16 +91,17 @@ class DeviceInterface:
         self.session: Optional[FuzzerSession] = None
         self.is_connected = False
 
+
     def detect_device(self) -> bool:
         """
         Detect and validate device connection
-        
+
         Returns:
             True if device detected and valid, False otherwise
         """
         try:
             # Check if device communication is available
-            if not hasattr(self.cmd, 'device') or self.cmd.device is None:
+            if not hasattr(self.cmd, "device") or self.cmd.device is None:
                 logger.error("Device communication not initialized")
                 return False
 
@@ -132,10 +136,11 @@ class DeviceInterface:
             self.is_connected = False
             return False
 
+
     def enter_reader_mode(self) -> bool:
         """
         Ensure device is in reader mode for fuzzing
-        
+
         Returns:
             True if in reader mode, False otherwise
         """
@@ -156,10 +161,11 @@ class DeviceInterface:
             logger.error(f"Failed to enter reader mode: {e}")
             return False
 
+
     def start_session(self) -> bool:
         """
         Start a fuzzing session with device
-        
+
         Returns:
             True if session started successfully
         """
@@ -172,28 +178,24 @@ class DeviceInterface:
             return False
 
         self.session = FuzzerSession(
-            device_info=self.device_info,
-            start_time=time.time()
+            device_info=self.device_info, start_time=time.time()
         )
+
         logger.info("Fuzzing session started")
         return True
 
     def test_authentication(
-        self, 
-        block: int, 
-        key_type: 'MfcKeyType',
-        key: bytes,
-        retry_count: int = 1
+        self, block: int, key_type: "MfcKeyType", key: bytes, retry_count: int = 1
     ) -> Tuple[AuthResult, Optional[str]]:
         """
         Test authentication with given key
-        
+
         Args:
             block: Target block number
             key_type: Key type (A or B)
             key: Authentication key (6 bytes)
             retry_count: Number of retries on timeout
-            
+
         Returns:
             Tuple of (AuthResult, error_message)
         """
@@ -206,10 +208,10 @@ class DeviceInterface:
         for attempt in range(retry_count):
             try:
                 result = self.cmd.mf1_auth_one_key_block(block, key_type, key)
-                
+
                 if self.session:
                     self.session.mutation_count += 1
-                    
+
                 if result:
                     if self.session:
                         self.session.success_count += 1
@@ -222,12 +224,12 @@ class DeviceInterface:
             except TimeoutError:
                 if self.session:
                     self.session.timeout_count += 1
-                    
+
                 if attempt < retry_count - 1:
                     logger.warning(f"Timeout on attempt {attempt + 1}, retrying...")
                     time.sleep(0.1)
                     continue
-                    
+
                 return AuthResult.TIMEOUT, "Authentication timeout"
 
             except Exception as e:
@@ -235,26 +237,24 @@ class DeviceInterface:
                 if self.session:
                     self.session.error_count += 1
                     self.session.last_error = error_msg
-                    
+
                 logger.warning(f"Authentication error: {error_msg}")
                 return AuthResult.ERROR, error_msg
 
         return AuthResult.TIMEOUT, "Max retries exceeded"
 
+
     def read_block(
-        self, 
-        block: int, 
-        key_type: 'MfcKeyType',
-        key: bytes
+        self, block: int, key_type: "MfcKeyType", key: bytes
     ) -> Tuple[Optional[bytes], Optional[str]]:
         """
         Read a MIFARE block
-        
+
         Args:
             block: Block number to read
             key_type: Key type (A or B)
             key: Authentication key (6 bytes)
-            
+
         Returns:
             Tuple of (block_data, error_message)
         """
@@ -270,21 +270,17 @@ class DeviceInterface:
             return None, error_msg
 
     def write_block(
-        self, 
-        block: int, 
-        key_type: 'MfcKeyType',
-        key: bytes,
-        data: bytes
+        self, block: int, key_type: "MfcKeyType", key: bytes, data: bytes
     ) -> Tuple[bool, Optional[str]]:
         """
         Write to a MIFARE block
-        
+
         Args:
             block: Block number to write
             key_type: Key type (A or B)
             key: Authentication key (6 bytes)
             data: Data to write (16 bytes)
-            
+
         Returns:
             Tuple of (success, error_message)
         """
@@ -302,10 +298,11 @@ class DeviceInterface:
             logger.warning(f"Write error: {error_msg}")
             return False, error_msg
 
+
     def get_session_stats(self) -> Dict[str, Any]:
         """
         Get current session statistics
-        
+
         Returns:
             Dictionary with session statistics
         """
@@ -313,24 +310,30 @@ class DeviceInterface:
             return {}
 
         elapsed = time.time() - self.session.start_time
-        total = (self.session.success_count + self.session.failure_count + 
-                self.session.error_count + self.session.timeout_count)
+        total = (
+            self.session.success_count
+            + self.session.failure_count
+            + self.session.error_count
+            + self.session.timeout_count
+        )
 
         return {
-            'elapsed_seconds': elapsed,
-            'total_mutations': self.session.mutation_count,
-            'successful_auths': self.session.success_count,
-            'failed_auths': self.session.failure_count,
-            'errors': self.session.error_count,
-            'timeouts': self.session.timeout_count,
-            'success_rate': (self.session.success_count / total * 100) if total > 0 else 0,
-            'last_error': self.session.last_error,
+            "elapsed_seconds": elapsed,
+            "total_mutations": self.session.mutation_count,
+            "successful_auths": self.session.success_count,
+            "failed_auths": self.session.failure_count,
+            "errors": self.session.error_count,
+            "timeouts": self.session.timeout_count,
+            "success_rate": (
+                (self.session.success_count / total * 100) if total > 0 else 0
+            ),
+            "last_error": self.session.last_error,
         }
 
     def end_session(self) -> Dict[str, Any]:
         """
         End fuzzing session and return final statistics
-        
+
         Returns:
             Final session statistics
         """
@@ -339,12 +342,13 @@ class DeviceInterface:
             logger.info(f"Session ended. Stats: {stats}")
             self.session = None
             return stats
+
         return {}
 
     def validate_device_health(self) -> bool:
         """
         Validate device is still healthy and responsive
-        
+
         Returns:
             True if device is healthy
         """
@@ -358,24 +362,25 @@ class DeviceInterface:
     def recover_connection(self) -> bool:
         """
         Attempt to recover device connection after error
-        
+
         Returns:
             True if connection recovered
         """
         logger.info("Attempting to recover device connection...")
-        
+
         try:
             # Try to re-detect device
             self.is_connected = False
             time.sleep(1)
-            
+
             if self.detect_device():
                 logger.info("Connection recovered")
                 return True
             else:
                 logger.error("Connection recovery failed")
                 return False
-                
+
         except Exception as e:
             logger.error(f"Recovery failed: {e}")
             return False
+
