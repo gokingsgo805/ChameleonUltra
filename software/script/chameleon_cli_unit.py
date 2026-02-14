@@ -22,33 +22,50 @@ import hardnested_utils
 
 import chameleon_com
 import chameleon_cmd
-from chameleon_utils import ArgumentParserNoExit, ArgsParserError, UnexpectedResponseError, execute_tool, \
-    tqdm_if_exists, print_key_table
+from chameleon_utils import (
+    ArgumentParserNoExit,
+    ArgsParserError,
+    UnexpectedResponseError,
+    execute_tool,
+    tqdm_if_exists,
+    print_key_table,
+)
 from chameleon_utils import CLITree
 from chameleon_utils import CR, CG, CB, CC, CY, C0, color_string
 from chameleon_utils import print_mem_dump
 from chameleon_enum import Command, Status, SlotNumber, TagSenseType, TagSpecificType
-from chameleon_enum import MifareClassicWriteMode, MifareClassicPrngType, MifareClassicDarksideStatus, MfcKeyType
+from chameleon_enum import (
+    MifareClassicWriteMode,
+    MifareClassicPrngType,
+    MifareClassicDarksideStatus,
+    MfcKeyType,
+)
 from chameleon_enum import MifareUltralightWriteMode
-from chameleon_enum import AnimationMode, ButtonPressFunction, ButtonType, MfcValueBlockOperator
+from chameleon_enum import (
+    AnimationMode,
+    ButtonPressFunction,
+    ButtonType,
+    MfcValueBlockOperator,
+)
 from chameleon_enum import HIDFormat
 from crypto1 import Crypto1
 
 # NXP IDs based on https://www.nxp.com/docs/en/application-note/AN10833.pdf
-type_id_SAK_dict = {0x00: "MIFARE Ultralight Classic/C/EV1/Nano | NTAG 2xx",
-                    0x08: "MIFARE Classic 1K | Plus SE 1K | Plug S 2K | Plus X 2K",
-                    0x09: "MIFARE Mini 0.3k",
-                    0x10: "MIFARE Plus 2K",
-                    0x11: "MIFARE Plus 4K",
-                    0x18: "MIFARE Classic 4K | Plus S 4K | Plus X 4K",
-                    0x19: "MIFARE Classic 2K",
-                    0x20: "MIFARE Plus EV1/EV2 | DESFire EV1/EV2/EV3 | DESFire Light | NTAG 4xx | "
-                          "MIFARE Plus S 2/4K | MIFARE Plus X 2/4K | MIFARE Plus SE 1K",
-                    0x28: "SmartMX with MIFARE Classic 1K",
-                    0x38: "SmartMX with MIFARE Classic 4K",
-                    }
+type_id_SAK_dict = {
+    0x00: "MIFARE Ultralight Classic/C/EV1/Nano | NTAG 2xx",
+    0x08: "MIFARE Classic 1K | Plus SE 1K | Plug S 2K | Plus X 2K",
+    0x09: "MIFARE Mini 0.3k",
+    0x10: "MIFARE Plus 2K",
+    0x11: "MIFARE Plus 4K",
+    0x18: "MIFARE Classic 4K | Plus S 4K | Plus X 4K",
+    0x19: "MIFARE Classic 2K",
+    0x20: "MIFARE Plus EV1/EV2 | DESFire EV1/EV2/EV3 | DESFire Light | NTAG 4xx | "
+    "MIFARE Plus S 2/4K | MIFARE Plus X 2/4K | MIFARE Plus SE 1K",
+    0x28: "SmartMX with MIFARE Classic 1K",
+    0x38: "SmartMX with MIFARE Classic 4K",
+}
 
-default_cwd = Path.cwd() / Path(__file__).with_name("bin")
+default_cwd = Path(__file__).resolve().parent / "bin"
 
 
 def load_key_file(import_key, keys):
@@ -56,8 +73,10 @@ def load_key_file(import_key, keys):
     Load key file and append its content to the provided set of keys.
     Each key is expected to be on a new line in the file.
     """
-    with open(import_key.name, 'rb') as file:
-        keys.update(line.encode('utf-8') for line in file.read().decode('utf-8').splitlines())
+    with open(import_key.name, "rb") as file:
+        keys.update(
+            line.encode("utf-8") for line in file.read().decode("utf-8").splitlines()
+        )
     return keys
 
 
@@ -66,11 +85,18 @@ def load_dic_file(import_dic, keys):
 
 
 def check_tools():
-    bin_dir = Path.cwd() / "bin"
+    bin_dir = default_cwd
     missing_tools = []
 
-    for tool in ("staticnested", "nested", "darkside", "mfkey32v2", "staticnested_1nt",
-             "staticnested_2x1nt_rf08s", "staticnested_2x1nt_rf08s_1key"):
+    for tool in (
+        "staticnested",
+        "nested",
+        "darkside",
+        "mfkey32v2",
+        "staticnested_1nt",
+        "staticnested_2x1nt_rf08s",
+        "staticnested_2x1nt_rf08s_1key",
+    ):
         if any(bin_dir.glob(f"{tool}*")):
             continue
         else:
@@ -141,8 +167,13 @@ class BaseCLIUnit:
             def __init__(self):
                 self.output = ""
                 self.time_start = timeit.default_timer()
-                self._process = subprocess.Popen(cmd, cwd=cwd, shell=True, stderr=subprocess.PIPE,
-                                                 stdout=subprocess.PIPE)
+                self._process = subprocess.Popen(
+                    cmd,
+                    cwd=cwd,
+                    shell=True,
+                    stderr=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                )
                 threading.Thread(target=self.thread_read_output).start()
 
             def thread_read_output(self):
@@ -191,7 +222,7 @@ class BaseCLIUnit:
 
 class DeviceRequiredUnit(BaseCLIUnit):
     """
-        Make sure of device online
+    Make sure of device online
     """
 
     def before_exec(self, args: argparse.Namespace):
@@ -205,7 +236,7 @@ class DeviceRequiredUnit(BaseCLIUnit):
 
 class ReaderRequiredUnit(DeviceRequiredUnit):
     """
-        Make sure of device enter to reader mode.
+    Make sure of device enter to reader mode.
     """
 
     def before_exec(self, args: argparse.Namespace):
@@ -226,8 +257,15 @@ class SlotIndexArgsUnit(DeviceRequiredUnit):
         slot_choices = [x.value for x in SlotNumber]
         help_str = f"Slot Index: {slot_choices} Default: active slot"
 
-        parser.add_argument('-s', "--slot", type=int, required=mandatory, help=help_str, metavar="<1-8>",
-                            choices=slot_choices)
+        parser.add_argument(
+            "-s",
+            "--slot",
+            type=int,
+            required=mandatory,
+            help=help_str,
+            metavar="<1-8>",
+            choices=slot_choices,
+        )
         return parser
 
 
@@ -253,20 +291,37 @@ class SenseTypeArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_sense_type_args(parser: ArgumentParserNoExit):
         sense_group = parser.add_mutually_exclusive_group(required=True)
-        sense_group.add_argument('--hf', action='store_true', help="HF type")
-        sense_group.add_argument('--lf', action='store_true', help="LF type")
+        sense_group.add_argument("--hf", action="store_true", help="HF type")
+        sense_group.add_argument("--lf", action="store_true", help="LF type")
         return parser
 
 
 class MF1AuthArgsUnit(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.add_argument('--blk', '--block', type=int, required=True, metavar="<dec>",
-                            help="The block where the key of the card is known")
+        parser.add_argument(
+            "--blk",
+            "--block",
+            type=int,
+            required=True,
+            metavar="<dec>",
+            help="The block where the key of the card is known",
+        )
         type_group = parser.add_mutually_exclusive_group()
-        type_group.add_argument('-a', '-A', action='store_true', help="Known key is A key (default)")
-        type_group.add_argument('-b', '-B', action='store_true', help="Known key is B key")
-        parser.add_argument('-k', '--key', type=str, required=True, metavar="<hex>", help="tag sector key")
+        type_group.add_argument(
+            "-a", "-A", action="store_true", help="Known key is A key (default)"
+        )
+        type_group.add_argument(
+            "-b", "-B", action="store_true", help="Known key is B key"
+        )
+        parser.add_argument(
+            "-k",
+            "--key",
+            type=str,
+            required=True,
+            metavar="<hex>",
+            help="tag sector key",
+        )
         return parser
 
     def get_param(self, args):
@@ -285,12 +340,20 @@ class MF1AuthArgsUnit(ReaderRequiredUnit):
 class HF14AAntiCollArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_hf14a_anticoll_args(parser: ArgumentParserNoExit):
-        parser.add_argument('--uid', type=str, metavar="<hex>", help="Unique ID")
-        parser.add_argument('--atqa', type=str, metavar="<hex>", help="Answer To Request")
-        parser.add_argument('--sak', type=str, metavar="<hex>", help="Select AcKnowledge")
+        parser.add_argument("--uid", type=str, metavar="<hex>", help="Unique ID")
+        parser.add_argument(
+            "--atqa", type=str, metavar="<hex>", help="Answer To Request"
+        )
+        parser.add_argument(
+            "--sak", type=str, metavar="<hex>", help="Select AcKnowledge"
+        )
         ats_group = parser.add_mutually_exclusive_group()
-        ats_group.add_argument('--ats', type=str, metavar="<hex>", help="Answer To Select")
-        ats_group.add_argument('--delete-ats', action='store_true', help="Delete Answer To Select")
+        ats_group.add_argument(
+            "--ats", type=str, metavar="<hex>", help="Answer To Select"
+        )
+        ats_group.add_argument(
+            "--delete-ats", action="store_true", help="Delete Answer To Select"
+        )
         return parser
 
     def update_hf14a_anticoll(self, args, uid, atqa, sak, ats):
@@ -337,7 +400,7 @@ class HF14AAntiCollArgsUnit(DeviceRequiredUnit):
         if (args.ats is not None) or args.delete_ats:
             change_requested = True
             if args.delete_ats:
-                new_ats = b''
+                new_ats = b""
             else:
                 ats_str: str = args.ats.strip()
                 if re.match(r"[a-fA-F0-9]+", ats_str) is not None:
@@ -372,9 +435,18 @@ class MFUAuthArgsUnit(ReaderRequiredUnit):
             return key
 
         parser.add_argument(
-            '-k', '--key', type=key_parser, metavar="<hex>", help="Authentication key (EV1/NTAG 4 bytes)."
+            "-k",
+            "--key",
+            type=key_parser,
+            metavar="<hex>",
+            help="Authentication key (EV1/NTAG 4 bytes).",
         )
-        parser.add_argument('-l', action='store_true', dest='swap_endian', help="Swap endianness of the key.")
+        parser.add_argument(
+            "-l",
+            action="store_true",
+            dest="swap_endian",
+            help="Swap endianness of the key.",
+        )
 
         return parser
 
@@ -400,7 +472,9 @@ class MFUAuthArgsUnit(ReaderRequiredUnit):
 class LFEMIdArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
-        parser.add_argument("--id", type=str, required=required, help="EM410x tag id", metavar="<hex>")
+        parser.add_argument(
+            "--id", type=str, required=required, help="EM410x tag id", metavar="<hex>"
+        )
         return parser
 
     def before_exec(self, args: argparse.Namespace):
@@ -416,25 +490,60 @@ class LFEMIdArgsUnit(DeviceRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         raise NotImplementedError("Please implement this")
 
+
 class LFHIDIdArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
         formats = [x.name for x in HIDFormat]
-        parser.add_argument("-f", "--format", type=str, required=required, help="HIDProx card format", metavar="", choices=formats)
-        parser.add_argument("--fc", type=int, required=False, help="HIDProx tag facility code", metavar="<int>")
-        parser.add_argument("--cn", type=int, required=required, help="HIDProx tag card number", metavar="<int>")
-        parser.add_argument("--il", type=int, required=False, help="HIDProx tag issue level", metavar="<int>")
-        parser.add_argument("--oem", type=int, required=False, help="HIDProx tag OEM", metavar="<int>")
+        parser.add_argument(
+            "-f",
+            "--format",
+            type=str,
+            required=required,
+            help="HIDProx card format",
+            metavar="",
+            choices=formats,
+        )
+        parser.add_argument(
+            "--fc",
+            type=int,
+            required=False,
+            help="HIDProx tag facility code",
+            metavar="<int>",
+        )
+        parser.add_argument(
+            "--cn",
+            type=int,
+            required=required,
+            help="HIDProx tag card number",
+            metavar="<int>",
+        )
+        parser.add_argument(
+            "--il",
+            type=int,
+            required=False,
+            help="HIDProx tag issue level",
+            metavar="<int>",
+        )
+        parser.add_argument(
+            "--oem", type=int, required=False, help="HIDProx tag OEM", metavar="<int>"
+        )
         return parser
 
     @staticmethod
-    def check_limits(format: int, fc: Union[int, None], cn: Union[int, None], il: Union[int, None], oem: Union[int, None]):
+    def check_limits(
+        format: int,
+        fc: Union[int, None],
+        cn: Union[int, None],
+        il: Union[int, None],
+        oem: Union[int, None],
+    ):
         limits = {
             HIDFormat.H10301: [0xFF, 0xFFFF, 0, 0],
             HIDFormat.IND26: [0xFFF, 0xFFF, 0, 0],
             HIDFormat.IND27: [0x1FFF, 0x3FFF, 0, 0],
             HIDFormat.INDASC27: [0x1FFF, 0x3FFF, 0, 0],
-            HIDFormat.TECOM27 : [0x7FF, 0xFFFF, 0, 0],
+            HIDFormat.TECOM27: [0x7FF, 0xFFFF, 0, 0],
             HIDFormat.W2804: [0xFF, 0x7FFF, 0, 0],
             HIDFormat.IND29: [0x1FFF, 0xFFFF, 0, 0],
             HIDFormat.ATSW30: [0xFFF, 0xFFFF, 0, 0],
@@ -465,13 +574,21 @@ class LFHIDIdArgsUnit(DeviceRequiredUnit):
         if limit is None:
             return True
         if fc is not None and fc > limit[0]:
-            raise ArgsParserError(f"{HIDFormat(format)}: Facility Code must between 0 to {limit[0]}")
+            raise ArgsParserError(
+                f"{HIDFormat(format)}: Facility Code must between 0 to {limit[0]}"
+            )
         if cn is not None and cn > limit[1]:
-            raise ArgsParserError(f"{HIDFormat(format)}: Card Number must between 0 to {limit[1]}")
+            raise ArgsParserError(
+                f"{HIDFormat(format)}: Card Number must between 0 to {limit[1]}"
+            )
         if il is not None and il > limit[2]:
-            raise ArgsParserError(f"{HIDFormat(format)}: Issue Level must between 0 to {limit[2]}")
+            raise ArgsParserError(
+                f"{HIDFormat(format)}: Issue Level must between 0 to {limit[2]}"
+            )
         if oem is not None and oem > limit[3]:
-            raise ArgsParserError(f"{HIDFormat(format)}: OEM must between 0 to {limit[3]}")
+            raise ArgsParserError(
+                f"{HIDFormat(format)}: OEM must between 0 to {limit[3]}"
+            )
 
     def before_exec(self, args: argparse.Namespace):
         if super().before_exec(args):
@@ -488,11 +605,20 @@ class LFHIDIdArgsUnit(DeviceRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         raise NotImplementedError()
 
+
 class LFHIDIdReadArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
         formats = [x.name for x in HIDFormat]
-        parser.add_argument("-f", "--format", type=str, required=False, help="HIDProx card format hint", metavar="", choices=formats)
+        parser.add_argument(
+            "-f",
+            "--format",
+            type=str,
+            required=False,
+            help="HIDProx card format hint",
+            metavar="",
+            choices=formats,
+        )
         return parser
 
     def args_parser(self) -> ArgumentParserNoExit:
@@ -501,10 +627,13 @@ class LFHIDIdReadArgsUnit(DeviceRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         raise NotImplementedError()
 
+
 class LFVikingIdArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
-        parser.add_argument("--id", type=str, required=required, help="Viking tag id", metavar="<hex>")
+        parser.add_argument(
+            "--id", type=str, required=required, help="Viking tag id", metavar="<hex>"
+        )
         return parser
 
     def before_exec(self, args: argparse.Namespace):
@@ -520,13 +649,21 @@ class LFVikingIdArgsUnit(DeviceRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         raise NotImplementedError("Please implement this")
 
+
 class TagTypeArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_type_args(parser: ArgumentParserNoExit):
         type_names = [t.name for t in TagSpecificType.list()]
         help_str = "Tag Type: " + ", ".join(type_names)
-        parser.add_argument('-t', "--type", type=str, required=True, metavar="TAG_TYPE",
-                            help=help_str, choices=type_names)
+        parser.add_argument(
+            "-t",
+            "--type",
+            type=str,
+            required=True,
+            metavar="TAG_TYPE",
+            help=help_str,
+            choices=type_names,
+        )
         return parser
 
     def args_parser(self) -> ArgumentParserNoExit:
@@ -537,55 +674,56 @@ class TagTypeArgsUnit(DeviceRequiredUnit):
 
 
 root = CLITree(root=True)
-hw = root.subgroup('hw', 'Hardware-related commands')
-hw_slot = hw.subgroup('slot', 'Emulation slots commands')
-hw_settings = hw.subgroup('settings', 'Chameleon settings commands')
+hw = root.subgroup("hw", "Hardware-related commands")
+hw_slot = hw.subgroup("slot", "Emulation slots commands")
+hw_settings = hw.subgroup("settings", "Chameleon settings commands")
 
-hf = root.subgroup('hf', 'High Frequency commands')
-hf_14a = hf.subgroup('14a', 'ISO14443-a commands')
-hf_mf = hf.subgroup('mf', 'MIFARE Classic commands')
-hf_mfu = hf.subgroup('mfu', 'MIFARE Ultralight / NTAG commands')
+hf = root.subgroup("hf", "High Frequency commands")
+hf_14a = hf.subgroup("14a", "ISO14443-a commands")
+hf_mf = hf.subgroup("mf", "MIFARE Classic commands")
+hf_mfu = hf.subgroup("mfu", "MIFARE Ultralight / NTAG commands")
 
-lf = root.subgroup('lf', 'Low Frequency commands')
-lf_em = lf.subgroup('em', 'EM commands')
-lf_em_410x = lf_em.subgroup('410x', 'EM410x commands')
-lf_hid = lf.subgroup('hid', 'HID commands')
-lf_hid_prox = lf_hid.subgroup('prox', 'HID Prox commands')
-lf_viking = lf.subgroup('viking', 'Viking commands')
+lf = root.subgroup("lf", "Low Frequency commands")
+lf_em = lf.subgroup("em", "EM commands")
+lf_em_410x = lf_em.subgroup("410x", "EM410x commands")
+lf_hid = lf.subgroup("hid", "HID commands")
+lf_hid_prox = lf_hid.subgroup("prox", "HID Prox commands")
+lf_viking = lf.subgroup("viking", "Viking commands")
 
-@root.command('clear')
+
+@root.command("clear")
 class RootClear(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Clear screen'
+        parser.description = "Clear screen"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
-        os.system('clear' if os.name == 'posix' else 'cls')
+        os.system("clear" if os.name == "posix" else "cls")
 
 
-@root.command('rem')
+@root.command("rem")
 class RootRem(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Timestamped comment'
-        parser.add_argument('comment', nargs='*', help='Your comment')
+        parser.description = "Timestamped comment"
+        parser.add_argument("comment", nargs="*", help="Your comment")
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         # precision: second
         # iso_timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
         # precision: nanosecond (note that the comment will take some time too, ~75ns, check your system)
-        iso_timestamp = datetime.utcnow().isoformat() + 'Z'
-        comment = ' '.join(args.comment)
+        iso_timestamp = datetime.utcnow().isoformat() + "Z"
+        comment = " ".join(args.comment)
         print(f"{iso_timestamp} remark: {comment}")
 
 
-@root.command('exit')
+@root.command("exit")
 class RootExit(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Exit client'
+        parser.description = "Exit client"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -594,13 +732,23 @@ class RootExit(BaseCLIUnit):
         sys.exit(996)
 
 
-@root.command('dump_help')
+@root.command("dump_help")
 class RootDumpHelp(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Dump available commands'
-        parser.add_argument('-d', '--show-desc', action='store_true', help="Dump full command description")
-        parser.add_argument('-g', '--show-groups', action='store_true', help="Dump command groups as well")
+        parser.description = "Dump available commands"
+        parser.add_argument(
+            "-d",
+            "--show-desc",
+            action="store_true",
+            help="Dump full command description",
+        )
+        parser.add_argument(
+            "-g",
+            "--show-groups",
+            action="store_true",
+            help="Dump command groups as well",
+        )
         return parser
 
     @staticmethod
@@ -627,25 +775,29 @@ class RootDumpHelp(BaseCLIUnit):
                 else:
                     print(color_string((CB, f"== {cmd_node.fullname} ==")))
             for child in cmd_node.children:
-                RootDumpHelp.dump_help(child, depth + 1, dump_cmd_groups, dump_description)
+                RootDumpHelp.dump_help(
+                    child, depth + 1, dump_cmd_groups, dump_description
+                )
 
     def on_exec(self, args: argparse.Namespace):
-        self.dump_help(root, dump_cmd_groups=args.show_groups, dump_description=args.show_desc)
+        self.dump_help(
+            root, dump_cmd_groups=args.show_groups, dump_description=args.show_desc
+        )
 
 
-@hw.command('connect')
+@hw.command("connect")
 class HWConnect(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Connect to chameleon by serial port'
-        parser.add_argument('-p', '--port', type=str, required=False)
+        parser.description = "Connect to chameleon by serial port"
+        parser.add_argument("-p", "--port", type=str, required=False)
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         try:
             if args.port is None:  # Chameleon auto-detect if no port is supplied
                 platform_name = uname().release
-                if 'Microsoft' in platform_name:
+                if "Microsoft" in platform_name:
                     path = os.environ["PATH"].split(os.pathsep)
                     path.append("/mnt/c/Windows/System32/WindowsPowerShell/v1.0/")
                     powershell_path = None
@@ -655,17 +807,22 @@ class HWConnect(BaseCLIUnit):
                             powershell_path = fn
                             break
                     if powershell_path:
-                        process = subprocess.Popen([powershell_path,
-                                                    "Get-PnPDevice -Class Ports -PresentOnly |"
-                                                    " where {$_.DeviceID -like '*VID_6868&PID_8686*'} |"
-                                                    " Select-Object -First 1 FriendlyName |"
-                                                    " % FriendlyName |"
-                                                    " select-string COM\\d+ |"
-                                                    "% { $_.matches.value }"], stdout=subprocess.PIPE)
+                        process = subprocess.Popen(
+                            [
+                                powershell_path,
+                                "Get-PnPDevice -Class Ports -PresentOnly |"
+                                " where {$_.DeviceID -like '*VID_6868&PID_8686*'} |"
+                                " Select-Object -First 1 FriendlyName |"
+                                " % FriendlyName |"
+                                " select-string COM\\d+ |"
+                                "% { $_.matches.value }",
+                            ],
+                            stdout=subprocess.PIPE,
+                        )
                         res = process.communicate()[0]
-                        _comport = res.decode('utf-8').strip()
+                        _comport = res.decode("utf-8").strip()
                         if _comport:
-                            args.port = _comport.replace('COM', '/dev/ttyS')
+                            args.port = _comport.replace("COM", "/dev/ttyS")
                 else:
                     # loop through all ports and find chameleon
                     for port in serial.tools.list_ports.comports():
@@ -673,12 +830,14 @@ class HWConnect(BaseCLIUnit):
                             args.port = port.device
                             break
                 if args.port is None:  # If no chameleon was found, exit
-                    print("Chameleon not found, please connect the device or try connecting manually with the -p flag.")
+                    print(
+                        "Chameleon not found, please connect the device or try connecting manually with the -p flag."
+                    )
                     return
             self.device_com.open(args.port)
             self.device_com.commands = self.cmd.get_device_capabilities()
             major, minor = self.cmd.get_app_version()
-            model = ['Ultra', 'Lite'][self.cmd.get_device_model()]
+            model = ["Ultra", "Lite"][self.cmd.get_device_model()]
             print(f" {{ Chameleon {model} connected: v{major}.{minor} }}")
 
         except Exception as e:
@@ -686,25 +845,29 @@ class HWConnect(BaseCLIUnit):
             self.device_com.close()
 
 
-@hw.command('disconnect')
+@hw.command("disconnect")
 class HWDisconnect(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Disconnect chameleon'
+        parser.description = "Disconnect chameleon"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         self.device_com.close()
 
 
-@hw.command('mode')
+@hw.command("mode")
 class HWMode(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Get or change device mode: tag reader or tag emulator'
+        parser.description = "Get or change device mode: tag reader or tag emulator"
         mode_group = parser.add_mutually_exclusive_group()
-        mode_group.add_argument('-r', '--reader', action='store_true', help="Set reader mode")
-        mode_group.add_argument('-e', '--emulator', action='store_true', help="Set emulator mode")
+        mode_group.add_argument(
+            "-r", "--reader", action="store_true", help="Set reader mode"
+        )
+        mode_group.add_argument(
+            "-e", "--emulator", action="store_true", help="Set emulator mode"
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -715,51 +878,53 @@ class HWMode(DeviceRequiredUnit):
             self.cmd.set_device_reader_mode(False)
             print("Switch to { Tag Emulator } mode successfully.")
         else:
-            print(f"- Device Mode ( Tag {'Reader' if self.cmd.is_device_reader_mode() else 'Emulator'} )")
+            print(
+                f"- Device Mode ( Tag {'Reader' if self.cmd.is_device_reader_mode() else 'Emulator'} )"
+            )
 
 
-@hw.command('chipid')
+@hw.command("chipid")
 class HWChipId(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Get device chipset ID'
+        parser.description = "Get device chipset ID"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
-        print(' - Device chip ID: ' + self.cmd.get_device_chip_id())
+        print(" - Device chip ID: " + self.cmd.get_device_chip_id())
 
 
-@hw.command('address')
+@hw.command("address")
 class HWAddress(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Get device address (used with Bluetooth)'
+        parser.description = "Get device address (used with Bluetooth)"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
-        print(' - Device address: ' + self.cmd.get_device_address())
+        print(" - Device address: " + self.cmd.get_device_address())
 
 
-@hw.command('version')
+@hw.command("version")
 class HWVersion(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Get current device firmware version'
+        parser.description = "Get current device firmware version"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         fw_version_tuple = self.cmd.get_app_version()
-        fw_version = f'v{fw_version_tuple[0]}.{fw_version_tuple[1]}'
+        fw_version = f"v{fw_version_tuple[0]}.{fw_version_tuple[1]}"
         git_version = self.cmd.get_git_version()
-        model = ['Ultra', 'Lite'][self.cmd.get_device_model()]
-        print(f' - Chameleon {model}, Version: {fw_version} ({git_version})')
+        model = ["Ultra", "Lite"][self.cmd.get_device_model()]
+        print(f" - Chameleon {model}, Version: {fw_version} ({git_version})")
 
 
-@hf_14a.command('scan')
+@hf_14a.command("scan")
 class HF14AScan(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Scan 14a tag, and print basic information'
+        parser.description = "Scan 14a tag, and print basic information"
         return parser
 
     def check_mf1_nt(self):
@@ -772,7 +937,7 @@ class HF14AScan(ReaderRequiredUnit):
 
     def sak_info(self, data_tag):
         # detect the technology in use based on SAK
-        int_sak = data_tag['sak'][0]
+        int_sak = data_tag["sak"][0]
         if int_sak in type_id_SAK_dict:
             print(f"- Guessed type(s) from SAK: {type_id_SAK_dict[int_sak]}")
 
@@ -781,10 +946,12 @@ class HF14AScan(ReaderRequiredUnit):
         if resp is not None:
             for data_tag in resp:
                 print(f"- UID  : {data_tag['uid'].hex().upper()}")
-                print(f"- ATQA : {data_tag['atqa'].hex().upper()} "
-                      f"(0x{int.from_bytes(data_tag['atqa'], byteorder='little'):04x})")
+                print(
+                    f"- ATQA : {data_tag['atqa'].hex().upper()} "
+                    f"(0x{int.from_bytes(data_tag['atqa'], byteorder='little'):04x})"
+                )
                 print(f"- SAK  : {data_tag['sak'].hex().upper()}")
-                if len(data_tag['ats']) > 0:
+                if len(data_tag["ats"]) > 0:
                     print(f"- ATS  : {data_tag['ats'].hex().upper()}")
                 if deep:
                     self.sak_info(data_tag)
@@ -801,11 +968,11 @@ class HF14AScan(ReaderRequiredUnit):
         self.scan()
 
 
-@hf_14a.command('info')
+@hf_14a.command("info")
 class HF14AInfo(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Scan 14a tag, and print detail information'
+        parser.description = "Scan 14a tag, and print detail information"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -814,34 +981,58 @@ class HF14AInfo(ReaderRequiredUnit):
         scan.scan(deep=True)
 
 
-@hf_mf.command('nested')
+@hf_mf.command("nested")
 class HFMFNested(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Mifare Classic nested recover key'
-        parser.add_argument('--blk', '--known-block', type=int, required=True, metavar="<dec>",
-                            help="Known key block number")
+        parser.description = "Mifare Classic nested recover key"
+        parser.add_argument(
+            "--blk",
+            "--known-block",
+            type=int,
+            required=True,
+            metavar="<dec>",
+            help="Known key block number",
+        )
         srctype_group = parser.add_mutually_exclusive_group()
-        srctype_group.add_argument('-a', '-A', action='store_true', help="Known key is A key (default)")
-        srctype_group.add_argument('-b', '-B', action='store_true', help="Known key is B key")
-        parser.add_argument('-k', '--key', type=str, required=True, metavar="<hex>", help="Known key")
+        srctype_group.add_argument(
+            "-a", "-A", action="store_true", help="Known key is A key (default)"
+        )
+        srctype_group.add_argument(
+            "-b", "-B", action="store_true", help="Known key is B key"
+        )
+        parser.add_argument(
+            "-k", "--key", type=str, required=True, metavar="<hex>", help="Known key"
+        )
         # tblk required because only single block mode is supported for now
-        parser.add_argument('--tblk', '--target-block', type=int, required=True, metavar="<dec>",
-                            help="Target key block number")
+        parser.add_argument(
+            "--tblk",
+            "--target-block",
+            type=int,
+            required=True,
+            metavar="<dec>",
+            help="Target key block number",
+        )
         dsttype_group = parser.add_mutually_exclusive_group()
-        dsttype_group.add_argument('--ta', '--tA', action='store_true', help="Target A key (default)")
-        dsttype_group.add_argument('--tb', '--tB', action='store_true', help="Target B key")
+        dsttype_group.add_argument(
+            "--ta", "--tA", action="store_true", help="Target A key (default)"
+        )
+        dsttype_group.add_argument(
+            "--tb", "--tB", action="store_true", help="Target B key"
+        )
         return parser
 
     def from_nt_level_code_to_str(self, nt_level):
         if nt_level == 0:
-            return 'StaticNested'
+            return "StaticNested"
         if nt_level == 1:
-            return 'Nested'
+            return "Nested"
         if nt_level == 2:
-            return 'HardNested'
+            return "HardNested"
 
-    def recover_a_key(self, block_known, type_known, key_known, block_target, type_target) -> Union[str, None]:
+    def recover_a_key(
+        self, block_known, type_known, key_known, block_target, type_target
+    ) -> Union[str, None]:
         """
             recover a key from key known.
 
@@ -854,7 +1045,9 @@ class HFMFNested(ReaderRequiredUnit):
         """
         # check nt level, we can run static or nested auto...
         nt_level = self.cmd.mf1_detect_prng()
-        print(f" - NT vulnerable: {color_string((CY, self.from_nt_level_code_to_str(nt_level)))}")
+        print(
+            f" - NT vulnerable: {color_string((CY, self.from_nt_level_code_to_str(nt_level)))}"
+        )
         if nt_level == 2:
             print(" [!] Use hf mf hardnested")
             return None
@@ -862,14 +1055,17 @@ class HFMFNested(ReaderRequiredUnit):
         # acquire
         if nt_level == 0:  # It's a staticnested tag?
             nt_uid_obj = self.cmd.mf1_static_nested_acquire(
-                block_known, type_known, key_known, block_target, type_target)
+                block_known, type_known, key_known, block_target, type_target
+            )
             cmd_param = f"{nt_uid_obj['uid']} {int(type_target)}"
-            for nt_item in nt_uid_obj['nts']:
+            for nt_item in nt_uid_obj["nts"]:
                 cmd_param += f" {nt_item['nt']} {nt_item['nt_enc']}"
             tool_name = "staticnested"
         else:
             dist_obj = self.cmd.mf1_detect_nt_dist(block_known, type_known, key_known)
-            nt_obj = self.cmd.mf1_nested_acquire(block_known, type_known, key_known, block_target, type_target)
+            nt_obj = self.cmd.mf1_nested_acquire(
+                block_known, type_known, key_known, block_target, type_target
+            )
             # create cmd
             cmd_param = f"{dist_obj['uid']} {dist_obj['dist']}"
             for nt_item in nt_obj:
@@ -888,7 +1084,7 @@ class HFMFNested(ReaderRequiredUnit):
 
         # wait end
         while process.is_running():
-            msg = f"   [ Time elapsed {process.get_time_distance()/1000:#.1f}s ]\r"
+            msg = f"   [ Time elapsed {process.get_time_distance() / 1000:#.1f}s ]\r"
             print(msg, end="")
             time.sleep(0.1)
         # clear \r
@@ -897,7 +1093,7 @@ class HFMFNested(ReaderRequiredUnit):
         if process.get_ret_code() == 0:
             output_str = process.get_output_sync()
             key_list = []
-            for line in output_str.split('\n'):
+            for line in output_str.split("\n"):
                 sea_obj = re.search(r"([a-fA-F0-9]{12})", line)
                 if sea_obj is not None:
                     key_list.append(sea_obj[1])
@@ -906,7 +1102,9 @@ class HFMFNested(ReaderRequiredUnit):
             print(f" - [{len(key_list)} candidate key(s) found ]")
             for key in key_list:
                 key_bytes = bytearray.fromhex(key)
-                if self.cmd.mf1_auth_one_key_block(block_target, type_target, key_bytes):
+                if self.cmd.mf1_auth_one_key_block(
+                    block_target, type_target, key_bytes
+                ):
                     return key
         else:
             # No keys recover, and no errors.
@@ -928,15 +1126,19 @@ class HFMFNested(ReaderRequiredUnit):
             print(color_string((CR, "Target key already known")))
             return
         print(f" - Nested recover one key running...")
-        key = self.recover_a_key(block_known, type_known, key_known_bytes, block_target, type_target)
+        key = self.recover_a_key(
+            block_known, type_known, key_known_bytes, block_target, type_target
+        )
         if key is None:
             print(color_string((CY, "No key found, you can retry.")))
         else:
-            print(f" - Block {block_target} Type {type_target.name} Key Found: {color_string((CG, key))}")
+            print(
+                f" - Block {block_target} Type {type_target.name} Key Found: {color_string((CG, key))}"
+            )
         return
 
 
-@hf_mf.command('darkside')
+@hf_mf.command("darkside")
 class HFMFDarkside(ReaderRequiredUnit):
     def __init__(self):
         super().__init__()
@@ -944,7 +1146,7 @@ class HFMFDarkside(ReaderRequiredUnit):
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Mifare Classic darkside recover key'
+        parser.description = "Mifare Classic darkside recover key"
         return parser
 
     def recover_key(self, block_target, type_target):
@@ -958,14 +1160,18 @@ class HFMFDarkside(ReaderRequiredUnit):
         first_recover = True
         retry_count = 0
         while retry_count < 0xFF:
-            darkside_resp = self.cmd.mf1_darkside_acquire(block_target, type_target, first_recover, 30)
+            darkside_resp = self.cmd.mf1_darkside_acquire(
+                block_target, type_target, first_recover, 30
+            )
             first_recover = False  # not first run.
             if darkside_resp[0] != MifareClassicDarksideStatus.OK:
-                print(f"Darkside error: {MifareClassicDarksideStatus(darkside_resp[0])}")
+                print(
+                    f"Darkside error: {MifareClassicDarksideStatus(darkside_resp[0])}"
+                )
                 break
             darkside_obj = darkside_resp[1]
 
-            if darkside_obj['par'] != 0:  # NXP tag workaround.
+            if darkside_obj["par"] != 0:  # NXP tag workaround.
                 self.darkside_list.clear()
 
             self.darkside_list.append(darkside_obj)
@@ -985,20 +1191,22 @@ class HFMFDarkside(ReaderRequiredUnit):
             process.wait_process()
             # get output
             output_str = process.get_output_sync()
-            if 'key not found' in output_str:
+            if "key not found" in output_str:
                 print(f" - No key found, retrying({retry_count})...")
                 retry_count += 1
                 continue  # retry
             else:
                 key_list = []
-                for line in output_str.split('\n'):
+                for line in output_str.split("\n"):
                     sea_obj = re.search(r"([a-fA-F0-9]{12})", line)
                     if sea_obj is not None:
                         key_list.append(sea_obj[1])
                 # auth key
                 for key in key_list:
                     key_bytes = bytearray.fromhex(key)
-                    if self.cmd.mf1_auth_one_key_block(block_target, type_target, key_bytes):
+                    if self.cmd.mf1_auth_one_key_block(
+                        block_target, type_target, key_bytes
+                    ):
                         return key
         return None
 
@@ -1011,32 +1219,83 @@ class HFMFDarkside(ReaderRequiredUnit):
         return
 
 
-@hf_mf.command('hardnested')
+@hf_mf.command("hardnested")
 class HFMFHardNested(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Mifare Classic hardnested recover key '
-        parser.add_argument('--blk', '--known-block', type=int, required=True, metavar="<dec>",
-                            help="Known key block number")
+        parser.description = "Mifare Classic hardnested recover key "
+        parser.add_argument(
+            "--blk",
+            "--known-block",
+            type=int,
+            required=True,
+            metavar="<dec>",
+            help="Known key block number",
+        )
         srctype_group = parser.add_mutually_exclusive_group()
-        srctype_group.add_argument('-a', '-A', action='store_true', help="Known key is A key (default)")
-        srctype_group.add_argument('-b', '-B', action='store_true', help="Known key is B key")
-        parser.add_argument('-k', '--key', type=str, required=True, metavar="<hex>", help="Known key")
-        parser.add_argument('--tblk', '--target-block', type=int, required=True, metavar="<dec>",
-                            help="Target key block number")
+        srctype_group.add_argument(
+            "-a", "-A", action="store_true", help="Known key is A key (default)"
+        )
+        srctype_group.add_argument(
+            "-b", "-B", action="store_true", help="Known key is B key"
+        )
+        parser.add_argument(
+            "-k", "--key", type=str, required=True, metavar="<hex>", help="Known key"
+        )
+        parser.add_argument(
+            "--tblk",
+            "--target-block",
+            type=int,
+            required=True,
+            metavar="<dec>",
+            help="Target key block number",
+        )
         dsttype_group = parser.add_mutually_exclusive_group()
-        dsttype_group.add_argument('--ta', '--tA', action='store_true', help="Target A key (default)")
-        dsttype_group.add_argument('--tb', '--tB', action='store_true', help="Target B key")
-        parser.add_argument('--slow', action='store_true', help="Use slower acquisition mode (more nonces)")
-        parser.add_argument('--keep-nonce-file', action='store_true', help="Keep the generated nonce file (nonces.bin)")
-        parser.add_argument('--max-runs', type=int, default=200, metavar="<dec>",
-                            help="Maximum acquisition runs per attempt before giving up (default: 200)")
+        dsttype_group.add_argument(
+            "--ta", "--tA", action="store_true", help="Target A key (default)"
+        )
+        dsttype_group.add_argument(
+            "--tb", "--tB", action="store_true", help="Target B key"
+        )
+        parser.add_argument(
+            "--slow",
+            action="store_true",
+            help="Use slower acquisition mode (more nonces)",
+        )
+        parser.add_argument(
+            "--keep-nonce-file",
+            action="store_true",
+            help="Keep the generated nonce file (nonces.bin)",
+        )
+        parser.add_argument(
+            "--max-runs",
+            type=int,
+            default=200,
+            metavar="<dec>",
+            help="Maximum acquisition runs per attempt before giving up (default: 200)",
+        )
         # Add max acquisition attempts
-        parser.add_argument('--max-attempts', type=int, default=3, metavar="<dec>",
-                            help="Maximum acquisition attempts if MSB sum is invalid (default: 3)")
+        parser.add_argument(
+            "--max-attempts",
+            type=int,
+            default=3,
+            metavar="<dec>",
+            help="Maximum acquisition attempts if MSB sum is invalid (default: 3)",
+        )
         return parser
 
-    def recover_key(self, slow_mode, block_known, type_known, key_known, block_target, type_target, keep_nonce_file, max_runs, max_attempts):
+    def recover_key(
+        self,
+        slow_mode,
+        block_known,
+        type_known,
+        key_known,
+        block_target,
+        type_target,
+        keep_nonce_file,
+        max_runs,
+        max_attempts,
+    ):
         """
         Recover a key using the HardNested attack via a nonce file, with dynamic MSB-based acquisition and restart on invalid sum.
 
@@ -1053,13 +1312,17 @@ class HFMFHardNested(ReaderRequiredUnit):
         """
         print(" - Starting HardNested attack...")
         nonces_buffer = bytearray()  # This will hold the final data for the file
-        uid_bytes = b''  # To store UID from the successful attempt
+        uid_bytes = b""  # To store UID from the successful attempt
 
         # --- Outer loop for acquisition attempts ---
         acquisition_success = False  # Flag to indicate if any attempt was successful
         for attempt in range(max_attempts):
-            print(f"\n--- Starting Acquisition Attempt {attempt + 1}/{max_attempts} ---")
-            total_raw_nonces_bytes = bytearray()  # Accumulator for raw nonces for THIS attempt
+            print(
+                f"\n--- Starting Acquisition Attempt {attempt + 1}/{max_attempts} ---"
+            )
+            total_raw_nonces_bytes = (
+                bytearray()
+            )  # Accumulator for raw nonces for THIS attempt
             nonces_buffer.clear()  # Clear buffer for each new attempt
 
             # --- MSB Tracking Initialization (Reset for each attempt) ---
@@ -1078,7 +1341,9 @@ class HFMFHardNested(ReaderRequiredUnit):
             except Exception as e:
                 print(color_string((CR, f"   Error scanning tag: {e}")))
                 # Decide if we should retry or fail completely. Let's fail for now.
-                print(color_string((CR, "   Attack failed due to error during scanning.")))
+                print(
+                    color_string((CR, "   Attack failed due to error during scanning."))
+                )
                 return None
 
             if scan_resp is None or len(scan_resp) == 0:
@@ -1088,52 +1353,100 @@ class HFMFHardNested(ReaderRequiredUnit):
                     time.sleep(1)
                     continue  # Retry the outer loop (next attempt)
                 else:
-                    print(color_string((CR, "   Maximum attempts reached without finding tag. Attack failed.")))
+                    print(
+                        color_string(
+                            (
+                                CR,
+                                "   Maximum attempts reached without finding tag. Attack failed.",
+                            )
+                        )
+                    )
                     return None
             if len(scan_resp) > 1:
-                print(color_string((CR, "   Error: Multiple tags found. Please present only one tag.")))
+                print(
+                    color_string(
+                        (
+                            CR,
+                            "   Error: Multiple tags found. Please present only one tag.",
+                        )
+                    )
+                )
                 # Fail immediately if multiple tags are present
                 return None
 
             tag_info = scan_resp[0]
-            uid_bytes = tag_info['uid']  # Store UID for later verification
+            uid_bytes = tag_info["uid"]  # Store UID for later verification
             uid_len = len(uid_bytes)
-            uid_for_file = b''
+            uid_for_file = b""
             if uid_len == 4:
-                uid_for_file = uid_bytes[0: 4]
+                uid_for_file = uid_bytes[0:4]
             elif uid_len == 7:
-                uid_for_file = uid_bytes[3: 7]
+                uid_for_file = uid_bytes[3:7]
             elif uid_len == 10:
-                uid_for_file = uid_bytes[6: 10]
+                uid_for_file = uid_bytes[6:10]
             else:
-                print(color_string((CR, f"   Error: Unexpected UID length ({uid_len} bytes). Cannot create nonce file header.")))
+                print(
+                    color_string(
+                        (
+                            CR,
+                            f"   Error: Unexpected UID length ({uid_len} bytes). Cannot create nonce file header.",
+                        )
+                    )
+                )
                 return None  # Fail if UID length is unexpected
             print(f"   Tag found with UID: {uid_bytes.hex().upper()}")
             # Prepare header in the main buffer for this attempt
             nonces_buffer.extend(uid_for_file)
-            nonces_buffer.extend(struct.pack('!BB', block_target, type_target.value & 0x01))
+            nonces_buffer.extend(
+                struct.pack("!BB", block_target, type_target.value & 0x01)
+            )
             print(f"   Nonce file header prepared: {nonces_buffer.hex().upper()}")
 
             # 2. Acquire nonces dynamically based on MSB criteria (Inner loop for runs)
-            print(f"   Acquiring nonces (slow mode: {slow_mode}, max runs: {max_runs}). This may take a while...")
+            print(
+                f"   Acquiring nonces (slow mode: {slow_mode}, max runs: {max_runs}). This may take a while..."
+            )
             while run_count < max_runs:
                 run_count += 1
                 print(f"   Starting acquisition run {run_count}/{max_runs}...")
                 try:
                     # Check if tag is still present before each run
                     current_scan = self.cmd.hf14a_scan()
-                    if current_scan is None or len(current_scan) == 0 or current_scan[0]['uid'] != uid_bytes:
-                        print(color_string((CY, f"   Error: Tag lost or changed before run {run_count}. Stopping acquisition attempt.")))
+                    if (
+                        current_scan is None
+                        or len(current_scan) == 0
+                        or current_scan[0]["uid"] != uid_bytes
+                    ):
+                        print(
+                            color_string(
+                                (
+                                    CY,
+                                    f"   Error: Tag lost or changed before run {run_count}. Stopping acquisition attempt.",
+                                )
+                            )
+                        )
                         acquisition_goal_met = False  # Mark as failed
                         break  # Exit inner run loop for this attempt
 
                     # Acquire nonces for this run
                     raw_nonces_bytes_this_run = self.cmd.mf1_hard_nested_acquire(
-                        slow_mode, block_known, type_known, key_known, block_target, type_target
+                        slow_mode,
+                        block_known,
+                        type_known,
+                        key_known,
+                        block_target,
+                        type_target,
                     )
 
                     if not raw_nonces_bytes_this_run:
-                        print(color_string((CY, f"   Run {run_count}: No nonces acquired in this run. Continuing...")))
+                        print(
+                            color_string(
+                                (
+                                    CY,
+                                    f"   Run {run_count}: No nonces acquired in this run. Continuing...",
+                                )
+                            )
+                        )
                         time.sleep(0.1)  # Small delay before retrying
                         continue
 
@@ -1143,15 +1456,25 @@ class HFMFHardNested(ReaderRequiredUnit):
                     # --- Process acquired nonces for MSB tracking ---
                     num_pairs_this_run = len(raw_nonces_bytes_this_run) // 9
                     print(
-                        f"   Run {run_count}: Acquired {num_pairs_this_run * 2} nonces ({len(raw_nonces_bytes_this_run)} bytes raw). Processing MSBs...")
+                        f"   Run {run_count}: Acquired {num_pairs_this_run * 2} nonces ({len(raw_nonces_bytes_this_run)} bytes raw). Processing MSBs..."
+                    )
 
                     new_msbs_found_this_run = 0
                     for i in range(num_pairs_this_run):
                         offset = i * 9
                         try:
-                            nt, nt_enc, par = struct.unpack_from('!IIB', raw_nonces_bytes_this_run, offset)
+                            nt, nt_enc, par = struct.unpack_from(
+                                "!IIB", raw_nonces_bytes_this_run, offset
+                            )
                         except struct.error as unpack_err:
-                            print(color_string((CR, f"   Error unpacking nonce data at offset {offset}: {unpack_err}. Skipping pair.")))
+                            print(
+                                color_string(
+                                    (
+                                        CR,
+                                        f"   Error unpacking nonce data at offset {offset}: {unpack_err}. Skipping pair.",
+                                    )
+                                )
+                            )
                             continue
 
                         msb = (nt_enc >> 24) & 0xFF
@@ -1160,10 +1483,14 @@ class HFMFHardNested(ReaderRequiredUnit):
                             seen_msbs[msb] = True
                             unique_msb_count += 1
                             new_msbs_found_this_run += 1
-                            parity_bit = hardnested_utils.evenparity32((nt_enc & 0xff000000) | (par & 0x08))
+                            parity_bit = hardnested_utils.evenparity32(
+                                (nt_enc & 0xFF000000) | (par & 0x08)
+                            )
                             msb_parity_sum += parity_bit
                             print(
-                                f"\r   Unique MSBs: {unique_msb_count}/256 | Current Sum: {msb_parity_sum}   ", end="")
+                                f"\r   Unique MSBs: {unique_msb_count}/256 | Current Sum: {msb_parity_sum}   ",
+                                end="",
+                            )
 
                     if new_msbs_found_this_run > 0:
                         print()  # Print a newline after progress update
@@ -1171,34 +1498,90 @@ class HFMFHardNested(ReaderRequiredUnit):
                     # --- Check termination condition ---
                     if unique_msb_count == 256:
                         print()
-                        print(f"{color_string((CG, '   All 256 unique MSBs found.'))} Final parity sum: {msb_parity_sum}")
+                        print(
+                            f"{color_string((CG, '   All 256 unique MSBs found.'))} Final parity sum: {msb_parity_sum}"
+                        )
                         if msb_parity_sum in hardnested_utils.hardnested_sums:
-                            print(color_string((CG, f"   Parity sum {msb_parity_sum} is VALID. Stopping acquisition runs.")))
+                            print(
+                                color_string(
+                                    (
+                                        CG,
+                                        f"   Parity sum {msb_parity_sum} is VALID. Stopping acquisition runs.",
+                                    )
+                                )
+                            )
                             acquisition_goal_met = True
                             acquisition_success = True  # Mark attempt as successful
                             break  # Exit the inner run loop successfully
                         else:
-                            print(color_string((CR, f"   Parity sum {msb_parity_sum} is INVALID (Expected one of {hardnested_utils.hardnested_sums}).")))
+                            print(
+                                color_string(
+                                    (
+                                        CR,
+                                        f"   Parity sum {msb_parity_sum} is INVALID (Expected one of {hardnested_utils.hardnested_sums}).",
+                                    )
+                                )
+                            )
                             acquisition_goal_met = False  # Mark as failed
                             acquisition_success = False
                             break  # Exit the inner run loop to restart the attempt
 
                 except chameleon_com.CMDInvalidException:
-                    print(color_string((CR, "   Error: Hardnested command not supported by this firmware version.")))
+                    print(
+                        color_string(
+                            (
+                                CR,
+                                "   Error: Hardnested command not supported by this firmware version.",
+                            )
+                        )
+                    )
                     return None  # Cannot proceed at all
                 except UnexpectedResponseError as e:
-                    print(color_string((CR, f"   Error acquiring nonces during run {run_count}: {e}")))
-                    print(color_string((CY, "   Stopping acquisition runs for this attempt...")))
+                    print(
+                        color_string(
+                            (
+                                CR,
+                                f"   Error acquiring nonces during run {run_count}: {e}",
+                            )
+                        )
+                    )
+                    print(
+                        color_string(
+                            (CY, "   Stopping acquisition runs for this attempt...")
+                        )
+                    )
                     acquisition_goal_met = False
                     break  # Exit inner run loop
                 except TimeoutError:
-                    print(color_string((CR, f"   Error: Timeout during nonce acquisition run {run_count}.")))
-                    print(color_string((CY, "   Stopping acquisition runs for this attempt...")))
+                    print(
+                        color_string(
+                            (
+                                CR,
+                                f"   Error: Timeout during nonce acquisition run {run_count}.",
+                            )
+                        )
+                    )
+                    print(
+                        color_string(
+                            (CY, "   Stopping acquisition runs for this attempt...")
+                        )
+                    )
                     acquisition_goal_met = False
                     break  # Exit inner run loop
                 except Exception as e:
-                    print(color_string((CR, f"   Unexpected error during acquisition run {run_count}: {e}")))
-                    print(color_string((CY, "   Stopping acquisition runs for this attempt...")))
+                    print(
+                        color_string(
+                            (
+                                CR,
+                                f"   Unexpected error during acquisition run {run_count}: {e}",
+                            )
+                        )
+                    )
+                    print(
+                        color_string(
+                            (CY, "   Stopping acquisition runs for this attempt...")
+                        )
+                    )
                     acquisition_goal_met = False
                     break  # Exit inner run loop
             # --- End of inner run loop (while run_count < max_runs) ---
@@ -1206,32 +1589,73 @@ class HFMFHardNested(ReaderRequiredUnit):
             # --- Post-Acquisition Summary for this attempt ---
             print(f"\n   Finished acquisition phase for attempt {attempt + 1}.")
             if acquisition_success:
-                print(color_string((CG, f"   Successfully acquired nonces meeting the MSB sum criteria in {run_count} runs.")))
+                print(
+                    color_string(
+                        (
+                            CG,
+                            f"   Successfully acquired nonces meeting the MSB sum criteria in {run_count} runs.",
+                        )
+                    )
+                )
                 # Append collected raw nonces to the main buffer for the file
                 nonces_buffer.extend(total_raw_nonces_bytes)
                 break  # Exit the outer attempt loop successfully
             elif unique_msb_count == 256 and not acquisition_goal_met:
-                print(color_string((CR, "   Found all 256 MSBs, but the parity sum was invalid.")))
+                print(
+                    color_string(
+                        (CR, "   Found all 256 MSBs, but the parity sum was invalid.")
+                    )
+                )
                 if attempt + 1 < max_attempts:
                     print(color_string((CY, "   Restarting acquisition process...")))
                     time.sleep(1)  # Small delay before restarting
                     continue  # Continue to the next iteration of the outer attempt loop
                 else:
-                    print(color_string((CR, f"   Maximum attempts ({max_attempts}) reached with invalid sum. Attack failed.")))
+                    print(
+                        color_string(
+                            (
+                                CR,
+                                f"   Maximum attempts ({max_attempts}) reached with invalid sum. Attack failed.",
+                            )
+                        )
+                    )
                     return None  # Failed after max attempts
             elif run_count >= max_runs:
-                print(color_string((CY, f"   Warning: Reached max runs ({max_runs}) for attempt {attempt + 1}. Found {unique_msb_count}/256 unique MSBs.")))
+                print(
+                    color_string(
+                        (
+                            CY,
+                            f"   Warning: Reached max runs ({max_runs}) for attempt {attempt + 1}. Found {unique_msb_count}/256 unique MSBs.",
+                        )
+                    )
+                )
                 if attempt + 1 < max_attempts:
                     print(color_string((CY, "   Restarting acquisition process...")))
                     time.sleep(1)
                     continue  # Continue to the next iteration of the outer attempt loop
                 else:
-                    print(color_string((CR, f"   Maximum attempts ({max_attempts}) reached without meeting criteria. Attack failed.")))
+                    print(
+                        color_string(
+                            (
+                                CR,
+                                f"   Maximum attempts ({max_attempts}) reached without meeting criteria. Attack failed.",
+                            )
+                        )
+                    )
                     return None  # Failed after max attempts
             else:  # Acquisition stopped due to error or tag loss
-                print(color_string((CR, f"Acquisition attempt {attempt + 1} stopped prematurely due to an error after {run_count} runs.")))
+                print(
+                    color_string(
+                        (
+                            CR,
+                            f"Acquisition attempt {attempt + 1} stopped prematurely due to an error after {run_count} runs.",
+                        )
+                    )
+                )
                 # Decide if we should retry or fail completely. Let's fail for now.
-                print(color_string((CR, "Attack failed due to error during acquisition.")))
+                print(
+                    color_string((CR, "Attack failed due to error during acquisition."))
+                )
                 return None  # Failed due to error
 
         # --- End of outer attempt loop ---
@@ -1239,17 +1663,31 @@ class HFMFHardNested(ReaderRequiredUnit):
         # If we exited the loop successfully (acquisition_success is True)
         if not acquisition_success:
             # This case should ideally be caught within the loop, but as a safeguard:
-            print(color_string((CR, f"   Error: Acquisition failed after {max_attempts} attempts.")))
+            print(
+                color_string(
+                    (CR, f"   Error: Acquisition failed after {max_attempts} attempts.")
+                )
+            )
             return None
 
         # --- Proceed with the rest of the attack using the successfully collected nonces ---
-        total_nonce_pairs = len(total_raw_nonces_bytes) // 9  # Use data from the successful attempt
+        total_nonce_pairs = (
+            len(total_raw_nonces_bytes) // 9
+        )  # Use data from the successful attempt
         print(
-            f"\n   Proceeding with attack using {total_nonce_pairs * 2} nonces ({len(total_raw_nonces_bytes)} bytes raw).")
+            f"\n   Proceeding with attack using {total_nonce_pairs * 2} nonces ({len(total_raw_nonces_bytes)} bytes raw)."
+        )
         print(f"   Total nonce file size will be {len(nonces_buffer)} bytes.")
 
         if total_nonce_pairs == 0:
-            print(color_string((CR, "   Error: No nonces were successfully acquired in the final attempt.")))
+            print(
+                color_string(
+                    (
+                        CR,
+                        "   Error: No nonces were successfully acquired in the final attempt.",
+                    )
+                )
+            )
             return None
 
         # 3. Save nonces to a temporary file
@@ -1262,21 +1700,31 @@ class HFMFHardNested(ReaderRequiredUnit):
             delete_nonce_on_close = not keep_nonce_file
             # Use delete_on_close=False to manage deletion manually in finally block
             temp_nonce_file = tempfile.NamedTemporaryFile(
-                suffix=".bin", prefix="hardnested_nonces_", delete=False,
-                mode='wb', dir='.'
+                suffix=".bin",
+                prefix="hardnested_nonces_",
+                delete=False,
+                mode="wb",
+                dir=".",
             )
-            temp_nonce_file.write(nonces_buffer)  # Write the buffer from the successful attempt
+            temp_nonce_file.write(
+                nonces_buffer
+            )  # Write the buffer from the successful attempt
             temp_nonce_file.flush()
             nonce_file_path = temp_nonce_file.name
             temp_nonce_file.close()  # Close it so hardnested can access it
             temp_nonce_file = None  # Clear variable after closing
             print(
-                f"   Nonces saved to {'temporary ' if delete_nonce_on_close else ''}file: {os.path.abspath(nonce_file_path)}")
+                f"   Nonces saved to {'temporary ' if delete_nonce_on_close else ''}file: {os.path.abspath(nonce_file_path)}"
+            )
 
             # 4. Prepare and run the external hardnested tool, redirecting output
-            print(color_string((CC, "--- Running Hardnested Tool (Output redirected) ---")))
+            print(
+                color_string(
+                    (CC, "--- Running Hardnested Tool (Output redirected) ---")
+                )
+            )
 
-            output_str = execute_tool('hardnested', [os.path.abspath(nonce_file_path)])
+            output_str = execute_tool("hardnested", [os.path.abspath(nonce_file_path)])
 
             print(color_string((CC, "--- Hardnested Tool Finished ---")))
 
@@ -1289,20 +1737,33 @@ class HFMFHardNested(ReaderRequiredUnit):
                 if line_stripped.startswith(key_prefix):
                     # Found the target line, now extract the key using regex
                     # Regex now looks for 12 hex chars specifically after the prefix
-                    sea_obj = re.search(r"([a-fA-F0-9]{12})", line_stripped[len(key_prefix):])
+                    sea_obj = re.search(
+                        r"([a-fA-F0-9]{12})", line_stripped[len(key_prefix) :]
+                    )
                     if sea_obj:
                         key_list.append(sea_obj.group(1))
                         # Optional: Break if you only expect one "Key found:" line
                         # break
 
             if not key_list:
-                print(color_string((CY, f"   No line starting with '{key_prefix}' found in the output file.")))
+                print(
+                    color_string(
+                        (
+                            CY,
+                            f"   No line starting with '{key_prefix}' found in the output file.",
+                        )
+                    )
+                )
                 return None
 
             # 7. Verify Keys (Same as before)
-            print(f"   [{len(key_list)} candidate key(s) found in output. Verifying...]")
+            print(
+                f"   [{len(key_list)} candidate key(s) found in output. Verifying...]"
+            )
             # Use the UID from the successful acquisition attempt
-            uid_bytes_for_verify = uid_bytes  # From the last successful scan in the outer loop
+            uid_bytes_for_verify = (
+                uid_bytes  # From the last successful scan in the outer loop
+            )
 
             for key_hex in key_list:
                 key_bytes = bytes.fromhex(key_hex)
@@ -1310,11 +1771,24 @@ class HFMFHardNested(ReaderRequiredUnit):
                 try:
                     # Check tag presence before auth attempt
                     scan_check = self.cmd.hf14a_scan()
-                    if scan_check is None or len(scan_check) == 0 or scan_check[0]['uid'] != uid_bytes_for_verify:
-                        print(color_string((CR, " Tag lost or changed during verification. Cannot verify.")))
+                    if (
+                        scan_check is None
+                        or len(scan_check) == 0
+                        or scan_check[0]["uid"] != uid_bytes_for_verify
+                    ):
+                        print(
+                            color_string(
+                                (
+                                    CR,
+                                    " Tag lost or changed during verification. Cannot verify.",
+                                )
+                            )
+                        )
                         return None  # Stop verification if tag is gone
 
-                    if self.cmd.mf1_auth_one_key_block(block_target, type_target, key_bytes):
+                    if self.cmd.mf1_auth_one_key_block(
+                        block_target, type_target, key_bytes
+                    ):
                         print(color_string((CG, " Success!")))
                         return key_hex  # Return the verified key
                     else:
@@ -1323,7 +1797,11 @@ class HFMFHardNested(ReaderRequiredUnit):
                     print(color_string((CR, f" Verification error: {e}")))
                     # Consider if we should continue trying other keys or stop
                 except Exception as e:
-                    print(color_string((CR, f" Unexpected error during verification: {e}")))
+                    print(
+                        color_string(
+                            (CR, f" Unexpected error during verification: {e}")
+                        )
+                    )
                     # Consider stopping here
 
             print(color_string((CY, "   Verification failed for all candidate keys.")))
@@ -1339,16 +1817,32 @@ class HFMFHardNested(ReaderRequiredUnit):
                             os.remove(final_nonce_filename)
                         # Use replace for atomicity if possible
                         os.replace(nonce_file_path, final_nonce_filename)
-                        print(f"   Nonce file kept as: {os.path.abspath(final_nonce_filename)}")
+                        print(
+                            f"   Nonce file kept as: {os.path.abspath(final_nonce_filename)}"
+                        )
                     except OSError as e:
-                        print(color_string((CR, f"   Error renaming/replacing temporary nonce file to {final_nonce_filename}: {e}")))
+                        print(
+                            color_string(
+                                (
+                                    CR,
+                                    f"   Error renaming/replacing temporary nonce file to {final_nonce_filename}: {e}",
+                                )
+                            )
+                        )
                         print(f"   Temporary file might remain: {nonce_file_path}")
                 else:
                     try:
                         os.remove(nonce_file_path)
                         # print(f"   Temporary nonce file deleted: {nonce_file_path}") # Optional confirmation
                     except OSError as e:
-                        print(color_string((CR, f"   Error deleting temporary nonce file {nonce_file_path}: {e}")))
+                        print(
+                            color_string(
+                                (
+                                    CR,
+                                    f"   Error deleting temporary nonce file {nonce_file_path}: {e}",
+                                )
+                            )
+                        )
 
     def on_exec(self, args: argparse.Namespace):
         block_known = args.blk
@@ -1367,137 +1861,254 @@ class HFMFHardNested(ReaderRequiredUnit):
 
         # Pass the max_runs and max_attempts arguments
         recovered_key = self.recover_key(
-            args.slow, block_known, type_known, key_known_bytes, block_target, type_target,
-            args.keep_nonce_file, args.max_runs, args.max_attempts
+            args.slow,
+            block_known,
+            type_known,
+            key_known_bytes,
+            block_target,
+            type_target,
+            args.keep_nonce_file,
+            args.max_runs,
+            args.max_attempts,
         )
 
         if recovered_key:
-            print(f" - Key Found: Block {block_target} Type {type_target.name} Key = {color_string((CG, recovered_key.upper()))}")
+            print(
+                f" - Key Found: Block {block_target} Type {type_target.name} Key = {color_string((CG, recovered_key.upper()))}"
+            )
         else:
             print(color_string((CR, " - HardNested attack failed to recover the key.")))
 
 
-@hf_mf.command('senested')
+@hf_mf.command("senested")
 class HFMFStaticEncryptedNested(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Mifare Classic static encrypted recover key via backdoor'
+        parser.description = "Mifare Classic static encrypted recover key via backdoor"
         parser.add_argument(
-            '--key', '-k', help='Backdoor key (as hex[12] format), currently known: A396EFA4E24F (default), A31667A8CEC1, 518B3354E760. See https://eprint.iacr.org/2024/1275', metavar='<hex>', type=str)
-        parser.add_argument('--sectors', '-s', type=int, metavar="<dec>", help="Sector count")
-        parser.add_argument('--starting-sector', type=int, metavar="<dec>", help="Start recovery from this sector")
+            "--key",
+            "-k",
+            help="Backdoor key (as hex[12] format), currently known: A396EFA4E24F (default), A31667A8CEC1, 518B3354E760. See https://eprint.iacr.org/2024/1275",
+            metavar="<hex>",
+            type=str,
+        )
+        parser.add_argument(
+            "--sectors", "-s", type=int, metavar="<dec>", help="Sector count"
+        )
+        parser.add_argument(
+            "--starting-sector",
+            type=int,
+            metavar="<dec>",
+            help="Start recovery from this sector",
+        )
         parser.set_defaults(sectors=16)
         parser.set_defaults(starting_sector=0)
-        parser.set_defaults(key='A396EFA4E24F')
+        parser.set_defaults(key="A396EFA4E24F")
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         acquire_datas = self.cmd.mf1_static_encrypted_nested_acquire(
-            bytes.fromhex(args.key), args.sectors, args.starting_sector)
+            bytes.fromhex(args.key), args.sectors, args.starting_sector
+        )
 
         if not acquire_datas:
-            print('Failed to collect nonces, is card present and has backdoor?')
+            print("Failed to collect nonces, is card present and has backdoor?")
 
-        uid = format(acquire_datas['uid'], 'x')
+        uid = format(acquire_datas["uid"], "x")
 
-        key_map = {'A': {}, 'B': {}}
+        key_map = {"A": {}, "B": {}}
 
         check_speed = 1.95  # sec per 64 keys
 
         for sector in range(args.starting_sector, args.sectors):
             sector_name = str(sector).zfill(2)
-            print('Recovering', sector, 'sector...')
-            execute_tool('staticnested_1nt', [uid, sector_name, format(acquire_datas['nts']['a'][sector]['nt'], 'x').zfill(8), format(
-                acquire_datas['nts']['a'][sector]['nt_enc'], 'x').zfill(8), str(acquire_datas['nts']['a'][sector]['parity']).zfill(4)])
-            execute_tool('staticnested_1nt', [uid, sector_name, format(acquire_datas['nts']['b'][sector]['nt'], 'x').zfill(8), format(
-                acquire_datas['nts']['b'][sector]['nt_enc'], 'x').zfill(8), str(acquire_datas['nts']['b'][sector]['parity']).zfill(4)])
+            print("Recovering", sector, "sector...")
+            execute_tool(
+                "staticnested_1nt",
+                [
+                    uid,
+                    sector_name,
+                    format(acquire_datas["nts"]["a"][sector]["nt"], "x").zfill(8),
+                    format(acquire_datas["nts"]["a"][sector]["nt_enc"], "x").zfill(8),
+                    str(acquire_datas["nts"]["a"][sector]["parity"]).zfill(4),
+                ],
+            )
+            execute_tool(
+                "staticnested_1nt",
+                [
+                    uid,
+                    sector_name,
+                    format(acquire_datas["nts"]["b"][sector]["nt"], "x").zfill(8),
+                    format(acquire_datas["nts"]["b"][sector]["nt_enc"], "x").zfill(8),
+                    str(acquire_datas["nts"]["b"][sector]["parity"]).zfill(4),
+                ],
+            )
             a_key_dic = f"keys_{uid}_{sector_name}_{format(acquire_datas['nts']['a'][sector]['nt'], 'x').zfill(8)}.dic"
             b_key_dic = f"keys_{uid}_{sector_name}_{format(acquire_datas['nts']['b'][sector]['nt'], 'x').zfill(8)}.dic"
-            execute_tool('staticnested_2x1nt_rf08s', [a_key_dic, b_key_dic])
+            execute_tool("staticnested_2x1nt_rf08s", [a_key_dic, b_key_dic])
 
-            keys = open(os.path.join(tempfile.gettempdir(), b_key_dic.replace('.dic', '_filtered.dic'))).readlines()
+            keys = open(
+                os.path.join(
+                    tempfile.gettempdir(), b_key_dic.replace(".dic", "_filtered.dic")
+                )
+            ).readlines()
             keys_bytes = []
             for key in keys:
                 keys_bytes.append(bytes.fromhex(key.strip()))
 
             key = None
 
-            print('Start checking possible B keys, will take up to', math.floor(
-                len(keys_bytes) / 64 * check_speed), 'seconds for', len(keys_bytes), 'keys')
+            print(
+                "Start checking possible B keys, will take up to",
+                math.floor(len(keys_bytes) / 64 * check_speed),
+                "seconds for",
+                len(keys_bytes),
+                "keys",
+            )
             for i in tqdm_if_exists(range(0, len(keys_bytes), 64)):
-                data = self.cmd.mf1_check_keys_on_block(sector * 4 + 3, 0x61, keys_bytes[i:i + 64])
+                data = self.cmd.mf1_check_keys_on_block(
+                    sector * 4 + 3, 0x61, keys_bytes[i : i + 64]
+                )
                 if data:
                     key = data.hex().zfill(12)
-                    key_map['B'][sector] = key
-                    print('Found B key', key)
+                    key_map["B"][sector] = key
+                    print("Found B key", key)
                     break
 
             if key:
-                a_key = execute_tool('staticnested_2x1nt_rf08s_1key', [format(
-                    acquire_datas['nts']['b'][sector]['nt'], 'x').zfill(8), key, a_key_dic])
+                a_key = execute_tool(
+                    "staticnested_2x1nt_rf08s_1key",
+                    [
+                        format(acquire_datas["nts"]["b"][sector]["nt"], "x").zfill(8),
+                        key,
+                        a_key_dic,
+                    ],
+                )
                 keys_bytes = []
-                for key in a_key.split('\n'):
+                for key in a_key.split("\n"):
                     keys_bytes.append(bytes.fromhex(key.strip()))
-                data = self.cmd.mf1_check_keys_on_block(sector * 4 + 3, 0x60, keys_bytes)
+                data = self.cmd.mf1_check_keys_on_block(
+                    sector * 4 + 3, 0x60, keys_bytes
+                )
                 if data:
                     key = data.hex().zfill(12)
-                    print('Found A key', key)
-                    key_map['A'][sector] = key
+                    print("Found A key", key)
+                    key_map["A"][sector] = key
                     continue
                 else:
-                    print('Failed to find A key by fast method, trying all possible keys')
-                    keys = open(os.path.join(tempfile.gettempdir(), a_key_dic.replace('.dic', '_filtered.dic'))).readlines()
+                    print(
+                        "Failed to find A key by fast method, trying all possible keys"
+                    )
+                    keys = open(
+                        os.path.join(
+                            tempfile.gettempdir(),
+                            a_key_dic.replace(".dic", "_filtered.dic"),
+                        )
+                    ).readlines()
                     keys_bytes = []
                     for key in keys:
                         keys_bytes.append(bytes.fromhex(key.strip()))
 
-                    print('Start checking possible A keys, will take up to', math.floor(
-                        len(keys_bytes) / 64 * check_speed), 'seconds for', len(keys_bytes), 'keys')
+                    print(
+                        "Start checking possible A keys, will take up to",
+                        math.floor(len(keys_bytes) / 64 * check_speed),
+                        "seconds for",
+                        len(keys_bytes),
+                        "keys",
+                    )
                     for i in tqdm_if_exists(range(0, len(keys_bytes), 64)):
-                        data = self.cmd.mf1_check_keys_on_block(sector * 4 + 3, 0x60, keys_bytes[i:i + 64])
+                        data = self.cmd.mf1_check_keys_on_block(
+                            sector * 4 + 3, 0x60, keys_bytes[i : i + 64]
+                        )
                         if data:
                             key = data.hex().zfill(12)
-                            print('Found A key', key)
-                            key_map['A'][sector] = key
+                            print("Found A key", key)
+                            key_map["A"][sector] = key
                             break
             else:
-                print('Failed to find key')
+                print("Failed to find key")
 
-        for file in glob.glob(tempfile.gettempdir() + '/keys_*.dic'):
+        for file in glob.glob(tempfile.gettempdir() + "/keys_*.dic"):
             os.remove(file)
 
         print_key_table(key_map)
 
 
-@hf_mf.command('fchk')
+@hf_mf.command("fchk")
 class HFMFFCHK(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Mifare Classic fast key check on sectors'
+        parser.description = "Mifare Classic fast key check on sectors"
 
         mifare_type_group = parser.add_mutually_exclusive_group()
-        mifare_type_group.add_argument('--mini', help='MIFARE Classic Mini / S20',
-                                       action='store_const', dest='maxSectors', const=5)
-        mifare_type_group.add_argument('--1k', help='MIFARE Classic 1k / S50 (default)',
-                                       action='store_const', dest='maxSectors', const=16)
-        mifare_type_group.add_argument('--2k', help='MIFARE Classic/Plus 2k',
-                                       action='store_const', dest='maxSectors', const=32)
-        mifare_type_group.add_argument('--4k', help='MIFARE Classic 4k / S70',
-                                       action='store_const', dest='maxSectors', const=40)
-
-        parser.add_argument(dest='keys', help='Key (as hex[12] format)', metavar='<hex>', type=str, nargs='*')
-        parser.add_argument('--key', dest='import_key', type=argparse.FileType('rb'),
-                            help='Read keys from .key format file')
-        parser.add_argument('--dic', dest='import_dic', type=argparse.FileType('r',
-                            encoding='utf8'), help='Read keys from .dic format file')
-
-        parser.add_argument('--export-key', type=argparse.FileType('wb'),
-                            help=f'Export result as .key format, file will be {color_string((CR, "OVERWRITTEN"))} if exists')
-        parser.add_argument('--export-dic', type=argparse.FileType('w', encoding='utf8'),
-                            help=f'Export result as .dic format, file will be {color_string((CR, "OVERWRITTEN"))} if exists')
+        mifare_type_group.add_argument(
+            "--mini",
+            help="MIFARE Classic Mini / S20",
+            action="store_const",
+            dest="maxSectors",
+            const=5,
+        )
+        mifare_type_group.add_argument(
+            "--1k",
+            help="MIFARE Classic 1k / S50 (default)",
+            action="store_const",
+            dest="maxSectors",
+            const=16,
+        )
+        mifare_type_group.add_argument(
+            "--2k",
+            help="MIFARE Classic/Plus 2k",
+            action="store_const",
+            dest="maxSectors",
+            const=32,
+        )
+        mifare_type_group.add_argument(
+            "--4k",
+            help="MIFARE Classic 4k / S70",
+            action="store_const",
+            dest="maxSectors",
+            const=40,
+        )
 
         parser.add_argument(
-            '-m', '--mask', help='Which sectorKey to be skip, 1 bit per sectorKey. `0b1` represent to skip to check. (in hex[20] format)', type=str, default='00000000000000000000', metavar='<hex>')
+            dest="keys",
+            help="Key (as hex[12] format)",
+            metavar="<hex>",
+            type=str,
+            nargs="*",
+        )
+        parser.add_argument(
+            "--key",
+            dest="import_key",
+            type=argparse.FileType("rb"),
+            help="Read keys from .key format file",
+        )
+        parser.add_argument(
+            "--dic",
+            dest="import_dic",
+            type=argparse.FileType("r", encoding="utf8"),
+            help="Read keys from .dic format file",
+        )
+
+        parser.add_argument(
+            "--export-key",
+            type=argparse.FileType("wb"),
+            help=f"Export result as .key format, file will be {color_string((CR, 'OVERWRITTEN'))} if exists",
+        )
+        parser.add_argument(
+            "--export-dic",
+            type=argparse.FileType("w", encoding="utf8"),
+            help=f"Export result as .dic format, file will be {color_string((CR, 'OVERWRITTEN'))} if exists",
+        )
+
+        parser.add_argument(
+            "-m",
+            "--mask",
+            help="Which sectorKey to be skip, 1 bit per sectorKey. `0b1` represent to skip to check. (in hex[20] format)",
+            type=str,
+            default="00000000000000000000",
+            metavar="<hex>",
+        )
 
         parser.set_defaults(maxSectors=16)
         return parser
@@ -1507,21 +2118,27 @@ class HFMFFCHK(ReaderRequiredUnit):
 
         for i in range(0, len(keys), chunkSize):
             # print("mask = {}".format(mask.hex(sep=' ', bytes_per_sep=1)))
-            chunkKeys = keys[i:i+chunkSize]
-            print(f' - progress of checking keys... {color_string((CY, i))} / {len(keys)} ({color_string((CY, f"{100 * i / len(keys):.1f}"))} %)')
+            chunkKeys = keys[i : i + chunkSize]
+            print(
+                f" - progress of checking keys... {color_string((CY, i))} / {len(keys)} ({color_string((CY, f'{100 * i / len(keys):.1f}'))} %)"
+            )
             resp = self.cmd.mf1_check_keys_of_sectors(mask, chunkKeys)
             # print(resp)
 
             if resp["status"] != Status.HF_TAG_OK:
-                print(f' - check interrupted, reason: {color_string((CR, Status(resp["status"])))}')
+                print(
+                    f" - check interrupted, reason: {color_string((CR, Status(resp['status'])))}"
+                )
                 break
-            elif 'sectorKeys' not in resp:
-                print(f' - check interrupted, reason: {color_string((CG, "All sectorKey is found or masked"))}')
+            elif "sectorKeys" not in resp:
+                print(
+                    f" - check interrupted, reason: {color_string((CG, 'All sectorKey is found or masked'))}"
+                )
                 break
 
             for j in range(10):
-                mask[j] |= resp['found'][j]
-            sectorKeys.update(resp['sectorKeys'])
+                mask[j] |= resp["found"][j]
+            sectorKeys.update(resp["sectorKeys"])
 
         return sectorKeys
 
@@ -1532,8 +2149,10 @@ class HFMFFCHK(ReaderRequiredUnit):
 
         # keys from args
         for key in args.keys:
-            if not re.match(r'^[a-fA-F0-9]{12}$', key):
-                print(f' - {color_string((CR, "Key should in hex[12] format, invalid key is ignored"))}, key = "{key}"')
+            if not re.match(r"^[a-fA-F0-9]{12}$", key):
+                print(
+                    f' - {color_string((CR, "Key should in hex[12] format, invalid key is ignored"))}, key = "{key}"'
+                )
                 continue
             keys.add(bytes.fromhex(key))
 
@@ -1547,16 +2166,18 @@ class HFMFFCHK(ReaderRequiredUnit):
                 return
 
         if len(keys) == 0:
-            print(f' - {color_string((CR, "No keys"))}')
+            print(f" - {color_string((CR, 'No keys'))}")
             return
 
         print(f" - loaded {color_string((CG, len(keys)))} keys")
 
         # mask
-        if not re.match(r'^[a-fA-F0-9]{1,20}$', args.mask):
-            print(f' - {color_string((CR, "mask should in hex[20] format"))}, mask = "{args.mask}"')
+        if not re.match(r"^[a-fA-F0-9]{1,20}$", args.mask):
+            print(
+                f' - {color_string((CR, "mask should in hex[20] format"))}, mask = "{args.mask}"'
+            )
             return
-        mask = bytearray.fromhex(f'{args.mask:0<20}')
+        mask = bytearray.fromhex(f"{args.mask:0<20}")
         for i in range(args.maxSectors, 40):
             mask[i // 4] |= 3 << (6 - i % 4 * 2)
 
@@ -1565,20 +2186,26 @@ class HFMFFCHK(ReaderRequiredUnit):
         sectorKeys = self.check_keys(mask, list(keys))
         endedAt = datetime.now()
         duration = endedAt - startedAt
-        print(f" - elapsed time: {color_string((CY, f'{duration.total_seconds():.3f}s'))}")
+        print(
+            f" - elapsed time: {color_string((CY, f'{duration.total_seconds():.3f}s'))}"
+        )
 
         if args.export_key is not None:
             unknownkey = bytes(6)
             for sectorNo in range(args.maxSectors):
                 args.export_key.write(sectorKeys.get(2 * sectorNo, unknownkey))
                 args.export_key.write(sectorKeys.get(2 * sectorNo + 1, unknownkey))
-            print(f" - result exported to: {color_string((CG, args.export_key.name))} (as .key format)")
+            print(
+                f" - result exported to: {color_string((CG, args.export_key.name))} (as .key format)"
+            )
 
         if args.export_dic is not None:
             uniq_result = set(sectorKeys.values())
             for key in uniq_result:
-                args.export_dic.write(key.hex().upper() + '\n')
-            print(f" - result exported to: {color_string((CG, args.export_dic.name))} (as .dic format)")
+                args.export_dic.write(key.hex().upper() + "\n")
+            print(
+                f" - result exported to: {color_string((CG, args.export_dic.name))} (as .dic format)"
+            )
 
         # print sectorKeys
         print(f"\n - {color_string((CG, 'result of key checking:'))}\n")
@@ -1591,22 +2218,30 @@ class HFMFFCHK(ReaderRequiredUnit):
             if keyA:
                 keyA = f"{color_string((CG, keyA.hex().upper()))} | {color_string((CG, '1'))}"
             else:
-                keyA = f"{color_string((CR, '------------'))} | {color_string((CR, '0'))}"
+                keyA = (
+                    f"{color_string((CR, '------------'))} | {color_string((CR, '0'))}"
+                )
             keyB = sectorKeys.get(2 * sectorNo + 1, None)
             if keyB:
                 keyB = f"{color_string((CG, keyB.hex().upper()))} | {color_string((CG, '1'))}"
             else:
-                keyB = f"{color_string((CR, '------------'))} | {color_string((CR, '0'))}"
-            print(f" {color_string((CY, f'{sectorNo:03d}'))} | {blk:03d} | {keyA} | {keyB} ")
+                keyB = (
+                    f"{color_string((CR, '------------'))} | {color_string((CR, '0'))}"
+                )
+            print(
+                f" {color_string((CY, f'{sectorNo:03d}'))} | {blk:03d} | {keyA} | {keyB} "
+            )
         print("-----+-----+--------------+---+--------------+----")
-        print(f"( {color_string((CR, '0'))}: Failed, {color_string((CG, '1'))}: Success )\n\n")
+        print(
+            f"( {color_string((CR, '0'))}: Failed, {color_string((CG, '1'))}: Success )\n\n"
+        )
 
 
-@hf_mf.command('rdbl')
+@hf_mf.command("rdbl")
 class HFMFRDBL(MF1AuthArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = super().args_parser()
-        parser.description = 'Mifare Classic read one block'
+        parser.description = "Mifare Classic read one block"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -1615,13 +2250,19 @@ class HFMFRDBL(MF1AuthArgsUnit):
         print(f" - Data: {resp.hex()}")
 
 
-@hf_mf.command('wrbl')
+@hf_mf.command("wrbl")
 class HFMFWRBL(MF1AuthArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = super().args_parser()
-        parser.description = 'Mifare Classic write one block'
-        parser.add_argument('-d', '--data', type=str, required=True, metavar="<hex>",
-                            help="Your block data, as hex string.")
+        parser.description = "Mifare Classic write one block"
+        parser.add_argument(
+            "-d",
+            "--data",
+            type=str,
+            required=True,
+            metavar="<hex>",
+            help="Your block data, as hex string.",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -1636,23 +2277,54 @@ class HFMFWRBL(MF1AuthArgsUnit):
             print(f" - {color_string((CR, 'Write fail.'))}")
 
 
-@hf_mf.command('view')
+@hf_mf.command("view")
 class HFMFView(MF1AuthArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Display content from tag memory or dump file'
+        parser.description = "Display content from tag memory or dump file"
         mifare_type_group = parser.add_mutually_exclusive_group()
-        mifare_type_group.add_argument('--mini', help='MIFARE Classic Mini / S20',
-                                       action='store_const', dest='maxSectors', const=5)
-        mifare_type_group.add_argument('--1k', help='MIFARE Classic 1k / S50 (default)',
-                                       action='store_const', dest='maxSectors', const=16)
-        mifare_type_group.add_argument('--2k', help='MIFARE Classic/Plus 2k',
-                                       action='store_const', dest='maxSectors', const=32)
-        mifare_type_group.add_argument('--4k', help='MIFARE Classic 4k / S70',
-                                       action='store_const', dest='maxSectors', const=40)
-        parser.add_argument('-d', '--dump-file', required=False, type=argparse.FileType("rb"), help="Dump file to read")
-        parser.add_argument('-k', '--key-file', required=False, type=argparse.FileType("r"),
-                            help="File containing keys of tag to write (exported with fchk --export)")
+        mifare_type_group.add_argument(
+            "--mini",
+            help="MIFARE Classic Mini / S20",
+            action="store_const",
+            dest="maxSectors",
+            const=5,
+        )
+        mifare_type_group.add_argument(
+            "--1k",
+            help="MIFARE Classic 1k / S50 (default)",
+            action="store_const",
+            dest="maxSectors",
+            const=16,
+        )
+        mifare_type_group.add_argument(
+            "--2k",
+            help="MIFARE Classic/Plus 2k",
+            action="store_const",
+            dest="maxSectors",
+            const=32,
+        )
+        mifare_type_group.add_argument(
+            "--4k",
+            help="MIFARE Classic 4k / S70",
+            action="store_const",
+            dest="maxSectors",
+            const=40,
+        )
+        parser.add_argument(
+            "-d",
+            "--dump-file",
+            required=False,
+            type=argparse.FileType("rb"),
+            help="Dump file to read",
+        )
+        parser.add_argument(
+            "-k",
+            "--key-file",
+            required=False,
+            type=argparse.FileType("r"),
+            help="File containing keys of tag to write (exported with fchk --export)",
+        )
         parser.set_defaults(maxSectors=16)
         return parser
 
@@ -1669,56 +2341,123 @@ class HFMFView(MF1AuthArgsUnit):
                 a, b = [bytes.fromhex(h) for h in line[:-1].split(":")]
                 keys.append((a, b))
             if len(keys) != args.maxSectors:
-                raise ArgsParserError(f"Invalid key file. Found {len(keys)}, expected {args.maxSectors}")
+                raise ArgsParserError(
+                    f"Invalid key file. Found {len(keys)}, expected {args.maxSectors}"
+                )
             # iterate over blocks
             for blk in range(0, args.maxSectors * 4):
                 resp = None
                 try:
                     # first try with key B
-                    resp = self.cmd.mf1_read_one_block(blk, MfcKeyType.B, keys[blk//4][1])
+                    resp = self.cmd.mf1_read_one_block(
+                        blk, MfcKeyType.B, keys[blk // 4][1]
+                    )
                 except UnexpectedResponseError:
                     # ignore read errors at this stage as we want to try key A
                     pass
                 if not resp:
                     # try with key A if B was unsuccessful
                     # this will raise an exception if key A fails too
-                    resp = self.cmd.mf1_read_one_block(blk, MfcKeyType.A, keys[blk//4][0])
+                    resp = self.cmd.mf1_read_one_block(
+                        blk, MfcKeyType.A, keys[blk // 4][0]
+                    )
                 data.extend(resp)
         else:
-            raise ArgsParserError("Missing args. Specify --dump-file (-d) or --key-file (-k)")
+            raise ArgsParserError(
+                "Missing args. Specify --dump-file (-d) or --key-file (-k)"
+            )
         print_mem_dump(data, 16)
 
 
-@hf_mf.command('value')
+@hf_mf.command("value")
 class HFMFVALUE(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'MIFARE Classic value block commands'
+        parser.description = "MIFARE Classic value block commands"
 
         operator_group = parser.add_mutually_exclusive_group()
-        operator_group.add_argument('--get', action='store_true', help="get value from src block")
-        operator_group.add_argument('--set', type=int, required=False, metavar="<dec>",
-                                    help="set value X (-2147483647 ~ 2147483647) to src block")
-        operator_group.add_argument('--inc', type=int, required=False, metavar="<dec>",
-                                    help="increment value by X (0 ~ 2147483647) from src to dst")
-        operator_group.add_argument('--dec', type=int, required=False, metavar="<dec>",
-                                    help="decrement value by X (0 ~ 2147483647) from src to dst")
-        operator_group.add_argument('--res', '--cp', action='store_true',
-                                    help="copy value from src to dst (Restore and Transfer)")
+        operator_group.add_argument(
+            "--get", action="store_true", help="get value from src block"
+        )
+        operator_group.add_argument(
+            "--set",
+            type=int,
+            required=False,
+            metavar="<dec>",
+            help="set value X (-2147483647 ~ 2147483647) to src block",
+        )
+        operator_group.add_argument(
+            "--inc",
+            type=int,
+            required=False,
+            metavar="<dec>",
+            help="increment value by X (0 ~ 2147483647) from src to dst",
+        )
+        operator_group.add_argument(
+            "--dec",
+            type=int,
+            required=False,
+            metavar="<dec>",
+            help="decrement value by X (0 ~ 2147483647) from src to dst",
+        )
+        operator_group.add_argument(
+            "--res",
+            "--cp",
+            action="store_true",
+            help="copy value from src to dst (Restore and Transfer)",
+        )
 
-        parser.add_argument('--blk', '--src-block', type=int, required=True, metavar="<dec>",
-                            help="block number of src")
+        parser.add_argument(
+            "--blk",
+            "--src-block",
+            type=int,
+            required=True,
+            metavar="<dec>",
+            help="block number of src",
+        )
         srctype_group = parser.add_mutually_exclusive_group()
-        srctype_group.add_argument('-a', '-A', action='store_true', help="key of src is A key (default)")
-        srctype_group.add_argument('-b', '-B', action='store_true', help="key of src is B key")
-        parser.add_argument('-k', '--src-key', type=str, required=True, metavar="<hex>", help="key of src")
+        srctype_group.add_argument(
+            "-a", "-A", action="store_true", help="key of src is A key (default)"
+        )
+        srctype_group.add_argument(
+            "-b", "-B", action="store_true", help="key of src is B key"
+        )
+        parser.add_argument(
+            "-k",
+            "--src-key",
+            type=str,
+            required=True,
+            metavar="<hex>",
+            help="key of src",
+        )
 
-        parser.add_argument('--tblk', '--dst-block', type=int, metavar="<dec>",
-                            help="block number of dst (default to src)")
+        parser.add_argument(
+            "--tblk",
+            "--dst-block",
+            type=int,
+            metavar="<dec>",
+            help="block number of dst (default to src)",
+        )
         dsttype_group = parser.add_mutually_exclusive_group()
-        dsttype_group.add_argument('--ta', '--tA', action='store_true', help="key of dst is A key (default to src)")
-        dsttype_group.add_argument('--tb', '--tB', action='store_true', help="key of dst is B key (default to src)")
-        parser.add_argument('--tkey', '--dst-key', type=str, metavar="<hex>", help="key of dst (default to src)")
+        dsttype_group.add_argument(
+            "--ta",
+            "--tA",
+            action="store_true",
+            help="key of dst is A key (default to src)",
+        )
+        dsttype_group.add_argument(
+            "--tb",
+            "--tB",
+            action="store_true",
+            help="key of dst is B key (default to src)",
+        )
+        parser.add_argument(
+            "--tkey",
+            "--dst-key",
+            type=str,
+            metavar="<hex>",
+            help="key of dst (default to src)",
+        )
 
         return parser
 
@@ -1743,7 +2482,11 @@ class HFMFVALUE(ReaderRequiredUnit):
 
         # dst
         dst_blk = args.tblk if args.tblk is not None else src_blk
-        dst_type = MfcKeyType.A if args.ta is not False else (MfcKeyType.B if args.tb is not False else src_type)
+        dst_type = (
+            MfcKeyType.A
+            if args.ta is not False
+            else (MfcKeyType.B if args.tb is not False else src_type)
+        )
         dst_key = args.tkey if args.tkey is not None else args.src_key
         if not re.match(r"^[a-fA-F0-9]{12}$", dst_key):
             print("dst_key must include 12 HEX symbols")
@@ -1752,10 +2495,14 @@ class HFMFVALUE(ReaderRequiredUnit):
         # print(dst_blk, dst_type, dst_key)
 
         if args.inc is not None:
-            self.inc_value(src_blk, src_type, src_key, args.inc, dst_blk, dst_type, dst_key)
+            self.inc_value(
+                src_blk, src_type, src_key, args.inc, dst_blk, dst_type, dst_key
+            )
             return
         elif args.dec is not None:
-            self.dec_value(src_blk, src_type, src_key, args.dec, dst_blk, dst_type, dst_key)
+            self.dec_value(
+                src_blk, src_type, src_key, args.dec, dst_blk, dst_type, dst_key
+            )
             return
         elif args.res is not False:
             self.res_value(src_blk, src_type, src_key, dst_blk, dst_type, dst_key)
@@ -1768,18 +2515,35 @@ class HFMFVALUE(ReaderRequiredUnit):
         val1, val2, val3, adr1, adr2, adr3, adr4 = struct.unpack("<iiiBBBB", resp)
         # print(f"{val1}, {val2}, {val3}, {adr1}, {adr2}, {adr3}, {adr4}")
         if (val1 != val3) or (val1 + val2 != -1):
-            print(f" - {color_string((CR, f'Invalid value of value block: {resp.hex()}'))}")
+            print(
+                f" - {color_string((CR, f'Invalid value of value block: {resp.hex()}'))}"
+            )
             return
         if (adr1 != adr3) or (adr2 != adr4) or (adr1 + adr2 != 0xFF):
-            print(f" - {color_string((CR, f'Invalid address of value block: {resp.hex()}'))}")
+            print(
+                f" - {color_string((CR, f'Invalid address of value block: {resp.hex()}'))}"
+            )
             return
-        print(f" - block[{block}] = {color_string((CG, f'{{ value: {val1}, adr: {adr1} }}'))}")
+        print(
+            f" - block[{block}] = {color_string((CG, f'{{ value: {val1}, adr: {adr1} }}'))}"
+        )
 
     def set_value(self, block, type, key, value):
         if value < -2147483647 or value > 2147483647:
-            raise ArgsParserError(f"Set value must be between -2147483647 and 2147483647. Got {value}")
+            raise ArgsParserError(
+                f"Set value must be between -2147483647 and 2147483647. Got {value}"
+            )
         adr_inverted = 0xFF - block
-        data = struct.pack("<iiiBBBB", value, -value - 1, value, block, adr_inverted, block, adr_inverted)
+        data = struct.pack(
+            "<iiiBBBB",
+            value,
+            -value - 1,
+            value,
+            block,
+            adr_inverted,
+            block,
+            adr_inverted,
+        )
         resp = self.cmd.mf1_write_one_block(block, type, key, data)
         if resp:
             print(f" - {color_string((CG, 'Set done.'))}")
@@ -1789,11 +2553,18 @@ class HFMFVALUE(ReaderRequiredUnit):
 
     def inc_value(self, src_blk, src_type, src_key, value, dst_blk, dst_type, dst_key):
         if value < 0 or value > 2147483647:
-            raise ArgsParserError(f"Increment value must be between 0 and 2147483647. Got {value}")
+            raise ArgsParserError(
+                f"Increment value must be between 0 and 2147483647. Got {value}"
+            )
         resp = self.cmd.mf1_manipulate_value_block(
-            src_blk, src_type, src_key,
-            MfcValueBlockOperator.INCREMENT, value,
-            dst_blk, dst_type, dst_key
+            src_blk,
+            src_type,
+            src_key,
+            MfcValueBlockOperator.INCREMENT,
+            value,
+            dst_blk,
+            dst_type,
+            dst_key,
         )
         if resp:
             print(f" - {color_string((CG, 'Increment done.'))}")
@@ -1803,11 +2574,18 @@ class HFMFVALUE(ReaderRequiredUnit):
 
     def dec_value(self, src_blk, src_type, src_key, value, dst_blk, dst_type, dst_key):
         if value < 0 or value > 2147483647:
-            raise ArgsParserError(f"Decrement value must be between 0 and 2147483647. Got {value}")
+            raise ArgsParserError(
+                f"Decrement value must be between 0 and 2147483647. Got {value}"
+            )
         resp = self.cmd.mf1_manipulate_value_block(
-            src_blk, src_type, src_key,
-            MfcValueBlockOperator.DECREMENT, value,
-            dst_blk, dst_type, dst_key
+            src_blk,
+            src_type,
+            src_key,
+            MfcValueBlockOperator.DECREMENT,
+            value,
+            dst_blk,
+            dst_type,
+            dst_key,
         )
         if resp:
             print(f" - {color_string((CG, 'Decrement done.'))}")
@@ -1817,9 +2595,14 @@ class HFMFVALUE(ReaderRequiredUnit):
 
     def res_value(self, src_blk, src_type, src_key, dst_blk, dst_type, dst_key):
         resp = self.cmd.mf1_manipulate_value_block(
-            src_blk, src_type, src_key,
-            MfcValueBlockOperator.RESTORE, 0,
-            dst_blk, dst_type, dst_key
+            src_blk,
+            src_type,
+            src_key,
+            MfcValueBlockOperator.RESTORE,
+            0,
+            dst_blk,
+            dst_type,
+            dst_key,
         )
         if resp:
             print(f" - {color_string((CG, 'Restore done.'))}")
@@ -1854,7 +2637,7 @@ def _run_mfkey32v2(items):
 
 
 class ItemGenerator:
-    def __init__(self, rs, uid_found_keys = set()):
+    def __init__(self, rs, uid_found_keys=set()):
         self.rs: list = rs
         self.progress = 0
         self.i = 0
@@ -1890,29 +2673,34 @@ class ItemGenerator:
     def key_from_item(item):
         return "{uid}-{nt}-{nr}-{ar}".format(**item)
 
-    def test_key(self, key, items = list()):
+    def test_key(self, key, items=list()):
         for item in self.rs:
             item_key = self.key_from_item(item)
             if item_key in self.found:
                 continue
-            if (item in items) or (Crypto1.mfkey32_is_reader_has_key(
-                int(item['uid'], 16),
-                int(item['nt'], 16),
-                int(item['nr'], 16),
-                int(item['ar'], 16),
-                key,
-            )):
+            if (item in items) or (
+                Crypto1.mfkey32_is_reader_has_key(
+                    int(item["uid"], 16),
+                    int(item["nt"], 16),
+                    int(item["nr"], 16),
+                    int(item["ar"], 16),
+                    key,
+                )
+            ):
                 self.keys.add(key)
                 self.found.add(item_key)
 
-@hf_mf.command('elog')
+
+@hf_mf.command("elog")
 class HFMFELog(DeviceRequiredUnit):
     detection_log_size = 18
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'MF1 Detection log count/decrypt'
-        parser.add_argument('--decrypt', action='store_true', help="Decrypt key from MF1 log list")
+        parser.description = "MF1 Detection log count/decrypt"
+        parser.add_argument(
+            "--decrypt", action="store_true", help="Decrypt key from MF1 log list"
+        )
         return parser
 
     def decrypt_by_list(self, rs: list, uid_found_keys: set = set()):
@@ -1923,7 +2711,7 @@ class HFMFELog(DeviceRequiredUnit):
         :return:
         """
         msg1 = f"  > {len(rs)} records => "
-        msg2 = f"/{(len(rs)*(len(rs)-1))//2} combinations. "
+        msg2 = f"/{(len(rs) * (len(rs) - 1)) // 2} combinations. "
         msg3 = " key(s) found"
         gen = ItemGenerator(rs, uid_found_keys)
         print(f"{msg1}{gen.progress}{msg2}{len(gen.keys)}{msg3}\r", end="")
@@ -1952,19 +2740,19 @@ class HFMFELog(DeviceRequiredUnit):
             recv_count = len(tmp)
             index += recv_count
             result_list.extend(tmp)
-            print("."*recv_count, end="")
+            print("." * recv_count, end="")
         print()
         print(f" - Download done ({len(result_list)} records), start parse and decrypt")
         # classify
         result_maps = {}
         for item in result_list:
-            uid = item['uid']
+            uid = item["uid"]
             if uid not in result_maps:
                 result_maps[uid] = {}
-            block = item['block']
+            block = item["block"]
             if block not in result_maps[uid]:
                 result_maps[uid][block] = {}
-            type = item['type']
+            type = item["type"]
             if type not in result_maps[uid][block]:
                 result_maps[uid][block][type] = []
 
@@ -1975,50 +2763,69 @@ class HFMFELog(DeviceRequiredUnit):
             result_maps_for_uid = result_maps[uid]
             uid_found_keys = set()
             for block in result_maps_for_uid:
-                for keyType in 'AB':
-                    records = result_maps_for_uid[block][keyType] if keyType in result_maps_for_uid[block] else []
+                for keyType in "AB":
+                    records = (
+                        result_maps_for_uid[block][keyType]
+                        if keyType in result_maps_for_uid[block]
+                        else []
+                    )
                     if len(records) < 1:
                         continue
                     print(f"  > Decrypting block {block} key {keyType} detect log...")
-                    result_maps[uid][block][keyType] = self.decrypt_by_list(records, uid_found_keys)
+                    result_maps[uid][block][keyType] = self.decrypt_by_list(
+                        records, uid_found_keys
+                    )
                     uid_found_keys.update(result_maps[uid][block][keyType])
 
             print("  > Result ---------------------------")
             for block in result_maps_for_uid.keys():
-                if 'A' in result_maps_for_uid[block]:
-                    print(f"  > Block {block}, A key result: {result_maps_for_uid[block]['A']}")
-                if 'B' in result_maps_for_uid[block]:
-                    print(f"  > Block {block}, B key result: {result_maps_for_uid[block]['B']}")
+                if "A" in result_maps_for_uid[block]:
+                    print(
+                        f"  > Block {block}, A key result: {result_maps_for_uid[block]['A']}"
+                    )
+                if "B" in result_maps_for_uid[block]:
+                    print(
+                        f"  > Block {block}, B key result: {result_maps_for_uid[block]['B']}"
+                    )
         return
 
 
-@hf_mf.command('eload')
+@hf_mf.command("eload")
 class HFMFELoad(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Load data to emulator memory'
+        parser.description = "Load data to emulator memory"
         self.add_slot_args(parser)
-        parser.add_argument('-f', '--file', type=str, required=True, help="file path")
-        parser.add_argument('-t', '--type', type=str, required=False, help="content type", choices=['bin', 'hex'])
+        parser.add_argument("-f", "--file", type=str, required=True, help="file path")
+        parser.add_argument(
+            "-t",
+            "--type",
+            type=str,
+            required=False,
+            help="content type",
+            choices=["bin", "hex"],
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         file = args.file
         if args.type is None:
-            if file.endswith('.bin'):
-                content_type = 'bin'
-            elif file.endswith('.eml'):
-                content_type = 'hex'
+            if file.endswith(".bin"):
+                content_type = "bin"
+            elif file.endswith(".eml"):
+                content_type = "hex"
             else:
-                raise Exception("Unknown file format, Specify content type with -t option")
+                raise Exception(
+                    "Unknown file format, Specify content type with -t option"
+                )
         else:
             content_type = args.type
         buffer = bytearray()
 
-        with open(file, mode='rb') as fd:
-            if content_type == 'bin':
+        with open(file, mode="rb") as fd:
+            if content_type == "bin":
                 buffer.extend(fd.read())
-            if content_type == 'hex':
+            if content_type == "hex":
                 buffer.extend(bytearray.fromhex(fd.read().decode()))
 
         if len(buffer) % 16 != 0:
@@ -2031,41 +2838,50 @@ class HFMFELoad(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
         max_blocks = (self.device_com.data_max_length - 1) // 16
         while index + 16 < len(buffer):
             # split a block from buffer
-            block_data = buffer[index: index + 16*max_blocks]
+            block_data = buffer[index : index + 16 * max_blocks]
             n_blocks = len(block_data) // 16
-            index += 16*n_blocks
+            index += 16 * n_blocks
             # load to device
             self.cmd.mf1_write_emu_block_data(block, block_data)
-            print('.'*n_blocks, end='')
+            print("." * n_blocks, end="")
             block += n_blocks
         print("\n - Load success")
 
 
-@hf_mf.command('esave')
+@hf_mf.command("esave")
 class HFMFESave(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Read data from emulator memory'
+        parser.description = "Read data from emulator memory"
         self.add_slot_args(parser)
-        parser.add_argument('-f', '--file', type=str, required=True, help="file path")
-        parser.add_argument('-t', '--type', type=str, required=False, help="content type", choices=['bin', 'hex'])
+        parser.add_argument("-f", "--file", type=str, required=True, help="file path")
+        parser.add_argument(
+            "-t",
+            "--type",
+            type=str,
+            required=False,
+            help="content type",
+            choices=["bin", "hex"],
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         file = args.file
         if args.type is None:
-            if file.endswith('.bin'):
-                content_type = 'bin'
-            elif file.endswith('.eml'):
-                content_type = 'hex'
+            if file.endswith(".bin"):
+                content_type = "bin"
+            elif file.endswith(".eml"):
+                content_type = "hex"
             else:
-                raise Exception("Unknown file format, Specify content type with -t option")
+                raise Exception(
+                    "Unknown file format, Specify content type with -t option"
+                )
         else:
             content_type = args.type
 
         selected_slot = self.cmd.get_active_slot()
         slot_info = self.cmd.get_slot_info()
-        tag_type = TagSpecificType(slot_info[selected_slot]['hf'])
+        tag_type = TagSpecificType(slot_info[selected_slot]["hf"])
         if tag_type == TagSpecificType.MIFARE_Mini:
             block_count = 20
         elif tag_type == TagSpecificType.MIFARE_1024:
@@ -2075,7 +2891,9 @@ class HFMFESave(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
         elif tag_type == TagSpecificType.MIFARE_4096:
             block_count = 256
         else:
-            raise Exception("Card in current slot is not Mifare Classic/Plus in SL1 mode")
+            raise Exception(
+                "Card in current slot is not Mifare Classic/Plus in SL1 mode"
+            )
 
         index = 0
         data = bytearray(0)
@@ -2085,29 +2903,29 @@ class HFMFESave(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
             data.extend(self.cmd.mf1_read_emu_block_data(index, chunk_count))
             index += chunk_count
             block_count -= chunk_count
-            print('.'*chunk_count, end='')
+            print("." * chunk_count, end="")
 
-        with open(file, 'wb') as fd:
-            if content_type == 'hex':
+        with open(file, "wb") as fd:
+            if content_type == "hex":
                 for i in range(len(data) // 16):
-                    fd.write(binascii.hexlify(data[i*16:(i+1)*16])+b'\n')
+                    fd.write(binascii.hexlify(data[i * 16 : (i + 1) * 16]) + b"\n")
             else:
                 fd.write(data)
         print("\n - Read success")
 
 
-@hf_mf.command('eview')
+@hf_mf.command("eview")
 class HFMFEView(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'View data from emulator memory'
+        parser.description = "View data from emulator memory"
         self.add_slot_args(parser)
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         selected_slot = self.cmd.get_active_slot()
         slot_info = self.cmd.get_slot_info()
-        tag_type = TagSpecificType(slot_info[selected_slot]['hf'])
+        tag_type = TagSpecificType(slot_info[selected_slot]["hf"])
 
         if tag_type == TagSpecificType.MIFARE_Mini:
             block_count = 20
@@ -2118,7 +2936,9 @@ class HFMFEView(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
         elif tag_type == TagSpecificType.MIFARE_4096:
             block_count = 256
         else:
-            raise Exception("Card in current slot is not Mifare Classic/Plus in SL1 mode")
+            raise Exception(
+                "Card in current slot is not Mifare Classic/Plus in SL1 mode"
+            )
         index = 0
         data = bytearray(0)
         max_blocks = self.device_com.data_max_length // 16
@@ -2131,51 +2951,80 @@ class HFMFEView(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
         print_mem_dump(data, 16)
 
 
-@hf_mf.command('econfig')
+@hf_mf.command("econfig")
 class HFMFEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Settings of Mifare Classic emulator'
+        parser.description = "Settings of Mifare Classic emulator"
         self.add_slot_args(parser)
         self.add_hf14a_anticoll_args(parser)
         gen1a_group = parser.add_mutually_exclusive_group()
-        gen1a_group.add_argument('--enable-gen1a', action='store_true', help="Enable Gen1a magic mode")
-        gen1a_group.add_argument('--disable-gen1a', action='store_true', help="Disable Gen1a magic mode")
+        gen1a_group.add_argument(
+            "--enable-gen1a", action="store_true", help="Enable Gen1a magic mode"
+        )
+        gen1a_group.add_argument(
+            "--disable-gen1a", action="store_true", help="Disable Gen1a magic mode"
+        )
         gen2_group = parser.add_mutually_exclusive_group()
-        gen2_group.add_argument('--enable-gen2', action='store_true', help="Enable Gen2 magic mode")
-        gen2_group.add_argument('--disable-gen2', action='store_true', help="Disable Gen2 magic mode")
+        gen2_group.add_argument(
+            "--enable-gen2", action="store_true", help="Enable Gen2 magic mode"
+        )
+        gen2_group.add_argument(
+            "--disable-gen2", action="store_true", help="Disable Gen2 magic mode"
+        )
         block0_group = parser.add_mutually_exclusive_group()
-        block0_group.add_argument('--enable-block0', action='store_true',
-                                  help="Use anti-collision data from block 0 for 4 byte UID tags")
-        block0_group.add_argument('--disable-block0', action='store_true', help="Use anti-collision data from settings")
+        block0_group.add_argument(
+            "--enable-block0",
+            action="store_true",
+            help="Use anti-collision data from block 0 for 4 byte UID tags",
+        )
+        block0_group.add_argument(
+            "--disable-block0",
+            action="store_true",
+            help="Use anti-collision data from settings",
+        )
         write_names = [w.name for w in MifareClassicWriteMode.list()]
         help_str = "Write Mode: " + ", ".join(write_names)
-        parser.add_argument('--write', type=str, help=help_str, metavar="MODE", choices=write_names)
+        parser.add_argument(
+            "--write", type=str, help=help_str, metavar="MODE", choices=write_names
+        )
         log_group = parser.add_mutually_exclusive_group()
-        log_group.add_argument('--enable-log', action='store_true', help="Enable logging of MFC authentication data")
-        log_group.add_argument('--disable-log', action='store_true', help="Disable logging of MFC authentication data")
+        log_group.add_argument(
+            "--enable-log",
+            action="store_true",
+            help="Enable logging of MFC authentication data",
+        )
+        log_group.add_argument(
+            "--disable-log",
+            action="store_true",
+            help="Disable logging of MFC authentication data",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         # collect current settings
         anti_coll_data = self.cmd.hf14a_get_anti_coll_data()
         if anti_coll_data is None or len(anti_coll_data) == 0:
-            print(f"{color_string((CR, f'Slot {self.slot_num} does not contain any HF 14A config'))}")
+            print(
+                f"{color_string((CR, f'Slot {self.slot_num} does not contain any HF 14A config'))}"
+            )
             return
-        uid = anti_coll_data['uid']
-        atqa = anti_coll_data['atqa']
-        sak = anti_coll_data['sak']
-        ats = anti_coll_data['ats']
+        uid = anti_coll_data["uid"]
+        atqa = anti_coll_data["atqa"]
+        sak = anti_coll_data["sak"]
+        ats = anti_coll_data["ats"]
         slotinfo = self.cmd.get_slot_info()
         fwslot = SlotNumber.to_fw(self.slot_num)
-        hf_tag_type = TagSpecificType(slotinfo[fwslot]['hf'])
+        hf_tag_type = TagSpecificType(slotinfo[fwslot]["hf"])
         if hf_tag_type not in [
             TagSpecificType.MIFARE_Mini,
             TagSpecificType.MIFARE_1024,
             TagSpecificType.MIFARE_2048,
             TagSpecificType.MIFARE_4096,
         ]:
-            print(f"{color_string((CR, f'Slot {self.slot_num} not configured as MIFARE Classic'))}")
+            print(
+                f"{color_string((CR, f'Slot {self.slot_num} not configured as MIFARE Classic'))}"
+            )
             return
         mfc_config = self.cmd.mf1_get_emulator_config()
         gen1a_mode = mfc_config["gen1a_mode"]
@@ -2183,7 +3032,9 @@ class HFMFEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
         block_anti_coll_mode = mfc_config["block_anti_coll_mode"]
         write_mode = MifareClassicWriteMode(mfc_config["write_mode"])
         detection = mfc_config["detection"]
-        change_requested, change_done, uid, atqa, sak, ats = self.update_hf14a_anticoll(args, uid, atqa, sak, ats)
+        change_requested, change_done, uid, atqa, sak, ats = self.update_hf14a_anticoll(
+            args, uid, atqa, sak, ats
+        )
         if args.enable_gen1a:
             change_requested = True
             if not gen1a_mode:
@@ -2191,7 +3042,7 @@ class HFMFEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
                 self.cmd.mf1_set_gen1a_mode(gen1a_mode)
                 change_done = True
             else:
-                print(f'{color_string((CY, "Requested gen1a already enabled"))}')
+                print(f"{color_string((CY, 'Requested gen1a already enabled'))}")
         elif args.disable_gen1a:
             change_requested = True
             if gen1a_mode:
@@ -2199,7 +3050,7 @@ class HFMFEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
                 self.cmd.mf1_set_gen1a_mode(gen1a_mode)
                 change_done = True
             else:
-                print(f'{color_string((CY, "Requested gen1a already disabled"))}')
+                print(f"{color_string((CY, 'Requested gen1a already disabled'))}")
         if args.enable_gen2:
             change_requested = True
             if not gen2_mode:
@@ -2207,7 +3058,7 @@ class HFMFEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
                 self.cmd.mf1_set_gen2_mode(gen2_mode)
                 change_done = True
             else:
-                print(f'{color_string((CY, "Requested gen2 already enabled"))}')
+                print(f"{color_string((CY, 'Requested gen2 already enabled'))}")
         elif args.disable_gen2:
             change_requested = True
             if gen2_mode:
@@ -2215,7 +3066,7 @@ class HFMFEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
                 self.cmd.mf1_set_gen2_mode(gen2_mode)
                 change_done = True
             else:
-                print(f'{color_string((CY, "Requested gen2 already disabled"))}')
+                print(f"{color_string((CY, 'Requested gen2 already disabled'))}")
         if args.enable_block0:
             change_requested = True
             if not block_anti_coll_mode:
@@ -2223,7 +3074,9 @@ class HFMFEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
                 self.cmd.mf1_set_block_anti_coll_mode(block_anti_coll_mode)
                 change_done = True
             else:
-                print(f'{color_string((CY, "Requested block0 anti-coll mode already enabled"))}')
+                print(
+                    f"{color_string((CY, 'Requested block0 anti-coll mode already enabled'))}"
+                )
         elif args.disable_block0:
             change_requested = True
             if block_anti_coll_mode:
@@ -2231,7 +3084,9 @@ class HFMFEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
                 self.cmd.mf1_set_block_anti_coll_mode(block_anti_coll_mode)
                 change_done = True
             else:
-                print(f'{color_string((CY, "Requested block0 anti-coll mode already disabled"))}')
+                print(
+                    f"{color_string((CY, 'Requested block0 anti-coll mode already disabled'))}"
+                )
         if args.write is not None:
             change_requested = True
             new_write_mode = MifareClassicWriteMode[args.write]
@@ -2240,7 +3095,7 @@ class HFMFEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
                 self.cmd.mf1_set_write_mode(write_mode)
                 change_done = True
             else:
-                print(f'{color_string((CY, "Requested write mode already set"))}')
+                print(f"{color_string((CY, 'Requested write mode already set'))}")
         if args.enable_log:
             change_requested = True
             if not detection:
@@ -2248,7 +3103,9 @@ class HFMFEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
                 self.cmd.mf1_set_detection_enable(detection)
                 change_done = True
             else:
-                print(f'{color_string((CY, "Requested logging of MFC authentication data already enabled"))}')
+                print(
+                    f"{color_string((CY, 'Requested logging of MFC authentication data already enabled'))}"
+                )
         elif args.disable_log:
             change_requested = True
             if detection:
@@ -2256,41 +3113,174 @@ class HFMFEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
                 self.cmd.mf1_set_detection_enable(detection)
                 change_done = True
             else:
-                print(f'{color_string((CY, "Requested logging of MFC authentication data already disabled"))}')
+                print(
+                    f"{color_string((CY, 'Requested logging of MFC authentication data already disabled'))}"
+                )
 
         if change_done:
-            print(' - MF1 Emulator settings updated')
+            print(" - MF1 Emulator settings updated")
         if not change_requested:
             enabled_str = color_string((CG, "enabled"))
             disabled_str = color_string((CR, "disabled"))
             atqa_string = f"{atqa.hex().upper()} (0x{int.from_bytes(atqa, byteorder='little'):04x})"
-            print(f'- {"Type:":40}{color_string((CY, hf_tag_type))}')
-            print(f'- {"UID:":40}{color_string((CY, uid.hex().upper()))}')
-            print(f'- {"ATQA:":40}{color_string((CY, atqa_string))}')
-            print(f'- {"SAK:":40}{color_string((CY, sak.hex().upper()))}')
+            print(f"- {'Type:':40}{color_string((CY, hf_tag_type))}")
+            print(f"- {'UID:':40}{color_string((CY, uid.hex().upper()))}")
+            print(f"- {'ATQA:':40}{color_string((CY, atqa_string))}")
+            print(f"- {'SAK:':40}{color_string((CY, sak.hex().upper()))}")
             if len(ats) > 0:
-                print(f'- {"ATS:":40}{color_string((CY, ats.hex().upper()))}')
+                print(f"- {'ATS:':40}{color_string((CY, ats.hex().upper()))}")
             print(
-                f'- {"Gen1A magic mode:":40}{f"{enabled_str}" if gen1a_mode else f"{disabled_str}"}')
+                f"- {'Gen1A magic mode:':40}{f'{enabled_str}' if gen1a_mode else f'{disabled_str}'}"
+            )
             print(
-                f'- {"Gen2 magic mode:":40}{f"{enabled_str}" if gen2_mode else f"{disabled_str}"}')
+                f"- {'Gen2 magic mode:':40}{f'{enabled_str}' if gen2_mode else f'{disabled_str}'}"
+            )
             print(
-                f'- {"Use anti-collision data from block 0:":40}'
-                f'{f"{enabled_str}" if block_anti_coll_mode else f"{disabled_str}"}')
+                f"- {'Use anti-collision data from block 0:':40}"
+                f"{f'{enabled_str}' if block_anti_coll_mode else f'{disabled_str}'}"
+            )
             try:
-                print(f'- {"Write mode:":40}{color_string((CY, MifareClassicWriteMode(write_mode)))}')
+                print(
+                    f"- {'Write mode:':40}{color_string((CY, MifareClassicWriteMode(write_mode)))}"
+                )
             except ValueError:
-                print(f'- {"Write mode:":40}{color_string((CR, "invalid value!"))}')
+                print(f"- {'Write mode:':40}{color_string((CR, 'invalid value!'))}")
             print(
-                f'- {"Log (mfkey32) mode:":40}{f"{enabled_str}" if detection else f"{disabled_str}"}')
+                f"- {'Log (mfkey32) mode:':40}{f'{enabled_str}' if detection else f'{disabled_str}'}"
+            )
 
 
-@hf_mfu.command('ercnt')
+@hf_mf.command("fuzz")
+class HFMFFuzzer(ReaderRequiredUnit):
+    """RFID Fuzzer for MIFARE Classic - mutates and tests command sequences for robustness"""
+
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = "Fuzzer for MIFARE Classic - tests device robustness with mutated commands"
+        parser.add_argument("-i", "--iterations", type=int, default=100, metavar="<dec>", help="Number of fuzz iterations (default: 100)")
+        parser.add_argument("-b", "--block", type=int, default=0, metavar="<dec>", help="Target block for fuzzing (default: 0)")
+        parser.add_argument("-t", "--target-type", type=str, choices=["A", "B"], default="A", help="Target key type A or B (default: A)")
+        parser.add_argument("-m", "--mutation-type", type=str, choices=["bit", "byte", "xor", "random"], default="bit", help="Mutation type (default: bit)")
+        parser.add_argument("-o", "--output", type=str, metavar="<file>", help="Output file for results")
+        parser.add_argument("--seed", type=int, metavar="<dec>", help="Random seed for reproducibility")
+        parser.add_argument("--slowdown", type=float, default=0.01, metavar="<float>", help="Delay between iterations in seconds (default: 0.01)")
+        return parser
+
+    def fuzz_data(self, data: bytes, mutation_type: str, seed: int = None) -> bytes:
+        """Mutate data based on mutation_type"""
+        import random
+        if seed is not None:
+            random.seed(seed)
+        data_array = bytearray(data)
+        if mutation_type == "bit":
+            bit_pos = random.randint(0, len(data_array) * 8 - 1)
+            byte_pos = bit_pos // 8
+            bit_in_byte = bit_pos % 8
+            data_array[byte_pos] ^= (1 << bit_in_byte)
+        elif mutation_type == "byte":
+            byte_pos = random.randint(0, len(data_array) - 1)
+            data_array[byte_pos] = random.randint(0, 255)
+        elif mutation_type == "xor":
+            xor_val = random.randint(0, 255)
+            byte_pos = random.randint(0, len(data_array) - 1)
+            data_array[byte_pos] ^= xor_val
+        elif mutation_type == "random":
+            byte_pos = random.randint(0, len(data_array) - 1)
+            data_array[byte_pos] = random.getrandbits(8)
+        return bytes(data_array)
+
+    def on_exec(self, args: argparse.Namespace):
+        import random
+        import csv
+        from datetime import datetime
+        start_time = datetime.now()
+        results = []
+        mutation_type = args.mutation_type
+        block = args.block
+        target_type = MfcKeyType.B if args.target_type == "B" else MfcKeyType.A
+        iterations = args.iterations
+        seed = args.seed
+        if seed is not None:
+            random.seed(seed)
+        print(f" - Starting MIFARE Fuzzer")
+        print(f"   Iterations: {iterations}")
+        print(f"   Mutation Type: {mutation_type}")
+        print(f"   Target Block: {block}")
+        print(f"   Target Type: {target_type.name}")
+        if seed is not None:
+            print(f"   Seed: {seed}")
+        print(f"   Slowdown: {args.slowdown}s")
+        print(f" - Generating test data...")
+        test_keys = [bytes.fromhex("ffffffffffff"), bytes.fromhex("000000000000"), bytes.fromhex("a0a1a2a3a4a5")]
+        successful_auth = 0
+        failed_auth = 0
+        device_errors = 0
+        interesting_behaviors = []
+        print(f" - Fuzzing in progress...")
+        for iteration in range(iterations):
+            try:
+                key = random.choice(test_keys)
+                mutated_key = self.fuzz_data(key, mutation_type, seed + iteration if seed else None)
+                try:
+                    result = self.cmd.mf1_auth_one_key_block(block, target_type, mutated_key)
+                    if result:
+                        successful_auth += 1
+                        behavior = "AUTH_SUCCESS"
+                    else:
+                        failed_auth += 1
+                        behavior = "AUTH_FAIL"
+                except Exception as e:
+                    device_errors += 1
+                    behavior = f"ERROR: {str(e)[:50]}"
+                    interesting_behaviors.append((iteration, mutated_key.hex(), behavior))
+                results.append({
+                    "iteration": iteration,
+                    "mutated_key": mutated_key.hex().upper(),
+                    "original_key": key.hex().upper(),
+                    "behavior": behavior,
+                    "timestamp": datetime.now().isoformat()
+                })
+                if (iteration + 1) % 10 == 0:
+                    print(f"   Progress: {iteration + 1}/{iterations} ({100 * (iteration + 1) // iterations}%)")
+                time.sleep(args.slowdown)
+            except KeyboardInterrupt:
+                print(f"\n - Fuzzing interrupted by user at iteration {iteration + 1}")
+                break
+            except Exception as e:
+                print(f"\n - Error during fuzzing: {e}")
+                device_errors += 1
+        elapsed = (datetime.now() - start_time).total_seconds()
+        print(f"\n - Fuzzing completed in {elapsed:.2f} seconds")
+        print(f" - Results Summary:")
+        print(f"   Successful Authentications: {successful_auth}")
+        print(f"   Failed Authentications: {failed_auth}")
+        print(f"   Device Errors: {device_errors}")
+        print(f"   Total Mutations: {len(results)}")
+        if interesting_behaviors:
+            print(f" - Interesting Behaviors Found: {len(interesting_behaviors)}")
+            for iter_num, key, behavior in interesting_behaviors[:10]:
+                print(f"   [{iter_num}] {key}: {behavior}")
+        output_file = args.output
+        if output_file:
+            try:
+                import os
+                with open(output_file, 'w', newline='') as f:
+                    writer = csv.DictWriter(f, fieldnames=["iteration", "mutated_key", "original_key", "behavior", "timestamp"])
+                    writer.writeheader()
+                    writer.writerows(results)
+                print(f" - Results saved to: {os.path.abspath(output_file)}")
+            except Exception as e:
+                print(color_string((CR, f" - Error saving results: {e}")))
+
+
+@hf_mfu.command("ercnt")
 class HFMFUERCNT(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Read MIFARE Ultralight / NTAG counter value.'
-        parser.add_argument('-c', '--counter', type=int, required=True, help="Counter index.")
+        parser.description = "Read MIFARE Ultralight / NTAG counter value."
+        parser.add_argument(
+            "-c", "--counter", type=int, required=True, help="Counter index."
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -2302,14 +3292,23 @@ class HFMFUERCNT(DeviceRequiredUnit):
             print(f" - Tearing: {color_string((CR, 'set'))}")
 
 
-@hf_mfu.command('ewcnt')
+@hf_mfu.command("ewcnt")
 class HFMFUEWCNT(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Write MIFARE Ultralight / NTAG counter value.'
-        parser.add_argument('-c', '--counter', type=int, required=True, help="Counter index.")
-        parser.add_argument('-v', '--value', type=int, required=True, help="Counter value (24-bit).")
-        parser.add_argument('-t', '--reset-tearing', action='store_true', help="Reset tearing event flag.")
+        parser.description = "Write MIFARE Ultralight / NTAG counter value."
+        parser.add_argument(
+            "-c", "--counter", type=int, required=True, help="Counter index."
+        )
+        parser.add_argument(
+            "-v", "--value", type=int, required=True, help="Counter value (24-bit)."
+        )
+        parser.add_argument(
+            "-t",
+            "--reset-tearing",
+            action="store_true",
+            help="Reset tearing event flag.",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -2317,36 +3316,48 @@ class HFMFUEWCNT(DeviceRequiredUnit):
             print(color_string((CR, f"Counter value {args.value:#x} is too large.")))
             return
 
-        self.cmd.mfu_write_emu_counter_data(args.counter, args.value, args.reset_tearing)
+        self.cmd.mfu_write_emu_counter_data(
+            args.counter, args.value, args.reset_tearing
+        )
 
-        print('- Ok')
+        print("- Ok")
 
 
-@hf_mfu.command('rdpg')
+@hf_mfu.command("rdpg")
 class HFMFURDPG(MFUAuthArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = super().args_parser()
-        parser.description = 'MIFARE Ultralight / NTAG read one page'
-        parser.add_argument('-p', '--page', type=int, required=True, metavar="<dec>",
-                            help="The page where the key will be used against")
+        parser.description = "MIFARE Ultralight / NTAG read one page"
+        parser.add_argument(
+            "-p",
+            "--page",
+            type=int,
+            required=True,
+            metavar="<dec>",
+            help="The page where the key will be used against",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         param = self.get_param(args)
 
         options = {
-            'activate_rf_field': 0,
-            'wait_response': 1,
-            'append_crc': 1,
-            'auto_select': 1,
-            'keep_rf_field': 0,
-            'check_response_crc': 1,
+            "activate_rf_field": 0,
+            "wait_response": 1,
+            "append_crc": 1,
+            "auto_select": 1,
+            "keep_rf_field": 0,
+            "check_response_crc": 1,
         }
 
         if param.key is not None:
-            options['keep_rf_field'] = 1
+            options["keep_rf_field"] = 1
             try:
-                resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200, data=struct.pack('!B', 0x1B)+param.key)
+                resp = self.cmd.hf14a_raw(
+                    options=options,
+                    resp_timeout_ms=200,
+                    data=struct.pack("!B", 0x1B) + param.key,
+                )
 
                 failed_auth = len(resp) < 2
                 if not failed_auth:
@@ -2355,32 +3366,52 @@ class HFMFURDPG(MFUAuthArgsUnit):
                 # failed auth may cause tags to be lost
                 failed_auth = True
 
-            options['keep_rf_field'] = 0
-            options['auto_select'] = 0
+            options["keep_rf_field"] = 0
+            options["auto_select"] = 0
         else:
             failed_auth = False
 
         if not failed_auth:
-            resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200, data=struct.pack('!BB', 0x30, args.page))
+            resp = self.cmd.hf14a_raw(
+                options=options,
+                resp_timeout_ms=200,
+                data=struct.pack("!BB", 0x30, args.page),
+            )
             print(f" - Data: {resp[:4].hex()}")
         else:
             try:
-                self.cmd.hf14a_raw(options=options, resp_timeout_ms=200, data=struct.pack('!BB', 0x30, args.page))
+                self.cmd.hf14a_raw(
+                    options=options,
+                    resp_timeout_ms=200,
+                    data=struct.pack("!BB", 0x30, args.page),
+                )
             except:
                 # we may lose the tag again here
                 pass
             print(color_string((CR, " - Auth failed")))
 
 
-@hf_mfu.command('wrpg')
+@hf_mfu.command("wrpg")
 class HFMFUWRPG(MFUAuthArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = super().args_parser()
-        parser.description = 'MIFARE Ultralight / NTAG write one page'
-        parser.add_argument('-p', '--page', type=int, required=True, metavar="<dec>",
-                            help="The index of the page to write to.")
-        parser.add_argument('-d', '--data', type=bytes.fromhex, required=True, metavar="<hex>",
-                            help="Your page data, as a 4 byte (8 character) hex string.")
+        parser.description = "MIFARE Ultralight / NTAG write one page"
+        parser.add_argument(
+            "-p",
+            "--page",
+            type=int,
+            required=True,
+            metavar="<dec>",
+            help="The index of the page to write to.",
+        )
+        parser.add_argument(
+            "-d",
+            "--data",
+            type=bytes.fromhex,
+            required=True,
+            metavar="<hex>",
+            help="Your page data, as a 4 byte (8 character) hex string.",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -2388,23 +3419,31 @@ class HFMFUWRPG(MFUAuthArgsUnit):
 
         data = args.data
         if len(data) != 4:
-            print(color_string((CR, "Page data should be a 4 byte (8 character) hex string")))
+            print(
+                color_string(
+                    (CR, "Page data should be a 4 byte (8 character) hex string")
+                )
+            )
             return
 
         options = {
-            'activate_rf_field': 0,
-            'wait_response': 1,
-            'append_crc': 1,
-            'auto_select': 1,
-            'keep_rf_field': 0,
-            'check_response_crc': 0,
+            "activate_rf_field": 0,
+            "wait_response": 1,
+            "append_crc": 1,
+            "auto_select": 1,
+            "keep_rf_field": 0,
+            "check_response_crc": 0,
         }
 
         if param.key is not None:
-            options['keep_rf_field'] = 1
-            options['check_response_crc'] = 1
+            options["keep_rf_field"] = 1
+            options["check_response_crc"] = 1
             try:
-                resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200, data=struct.pack('!B', 0x1B)+param.key)
+                resp = self.cmd.hf14a_raw(
+                    options=options,
+                    resp_timeout_ms=200,
+                    data=struct.pack("!B", 0x1B) + param.key,
+                )
 
                 failed_auth = len(resp) < 2
                 if not failed_auth:
@@ -2413,15 +3452,18 @@ class HFMFUWRPG(MFUAuthArgsUnit):
                 # failed auth may cause tags to be lost
                 failed_auth = True
 
-            options['keep_rf_field'] = 0
-            options['auto_select'] = 0
-            options['check_response_crc'] = 0
+            options["keep_rf_field"] = 0
+            options["auto_select"] = 0
+            options["check_response_crc"] = 0
         else:
             failed_auth = False
 
         if not failed_auth:
-            resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200,
-                                      data=struct.pack('!BB', 0xA2, args.page)+data)
+            resp = self.cmd.hf14a_raw(
+                options=options,
+                resp_timeout_ms=200,
+                data=struct.pack("!BB", 0xA2, args.page) + data,
+            )
 
             if resp[0] == 0x0A:
                 print(" - Ok")
@@ -2430,18 +3472,22 @@ class HFMFUWRPG(MFUAuthArgsUnit):
         else:
             # send a command just to disable the field. use read to avoid corrupting the data
             try:
-                self.cmd.hf14a_raw(options=options, resp_timeout_ms=200, data=struct.pack('!BB', 0x30, args.page))
+                self.cmd.hf14a_raw(
+                    options=options,
+                    resp_timeout_ms=200,
+                    data=struct.pack("!BB", 0x30, args.page),
+                )
             except:
                 # we may lose the tag again here
                 pass
             print(color_string((CR, " - Auth failed")))
 
 
-@hf_mfu.command('eview')
+@hf_mfu.command("eview")
 class HFMFUEVIEW(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'MIFARE Ultralight / NTAG view emulator data'
+        parser.description = "MIFARE Ultralight / NTAG view emulator data"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -2451,20 +3497,25 @@ class HFMFUEVIEW(DeviceRequiredUnit):
             count = min(nr_pages - page, 16)
             data = self.cmd.mfu_read_emu_page_data(page, count)
             for i in range(0, len(data), 4):
-                print(f"#{page+(i >> 2):02x}: {data[i:i+4].hex()}")
+                print(f"#{page + (i >> 2):02x}: {data[i : i + 4].hex()}")
             page += count
 
 
-@hf_mfu.command('eload')
+@hf_mfu.command("eload")
 class HFMFUELOAD(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'MIFARE Ultralight / NTAG load emulator data'
+        parser.description = "MIFARE Ultralight / NTAG load emulator data"
         parser.add_argument(
-            '-f', '--file', required=True, type=str, help="File to load data from."
+            "-f", "--file", required=True, type=str, help="File to load data from."
         )
         parser.add_argument(
-            '-t', '--type', type=str, required=False, help="Force writing as either raw binary or hex.", choices=['bin', 'hex']
+            "-t",
+            "--type",
+            type=str,
+            required=False,
+            help="Force writing as either raw binary or hex.",
+            choices=["bin", "hex"],
         )
         return parser
 
@@ -2478,31 +3529,47 @@ class HFMFUELOAD(DeviceRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         file_type = args.type
         if file_type is None:
-            if args.file.endswith('.eml') or args.file.endswith('.txt'):
-                file_type = 'hex'
+            if args.file.endswith(".eml") or args.file.endswith(".txt"):
+                file_type = "hex"
             else:
-                file_type = 'bin'
+                file_type = "bin"
 
-        if file_type == 'hex':
-            with open(args.file, 'r') as f:
+        if file_type == "hex":
+            with open(args.file, "r") as f:
                 data = f.read()
-            data = re.sub('#.*$', '', data, flags=re.MULTILINE)
+            data = re.sub("#.*$", "", data, flags=re.MULTILINE)
             data = bytes.fromhex(data)
         else:
-            with open(args.file, 'rb') as f:
+            with open(args.file, "rb") as f:
                 data = f.read()
 
         # this will throw an exception on incorrect slot type
         nr_pages = self.cmd.mfu_get_emu_pages_count()
         size = nr_pages * 4
         if len(data) > size:
-            print(color_string((CR, f"Dump file is too large for the current slot (expected {size} bytes).")))
+            print(
+                color_string(
+                    (
+                        CR,
+                        f"Dump file is too large for the current slot (expected {size} bytes).",
+                    )
+                )
+            )
             return
         elif (len(data) % 4) > 0:
-            print(color_string((CR, "Dump file's length is not a multiple of 4 bytes.")))
+            print(
+                color_string((CR, "Dump file's length is not a multiple of 4 bytes."))
+            )
             return
         elif len(data) < size:
-            print(color_string((CY, f"Dump file is smaller than the current slot's memory ({len(data)} < {size}).")))
+            print(
+                color_string(
+                    (
+                        CY,
+                        f"Dump file is smaller than the current slot's memory ({len(data)} < {size}).",
+                    )
+                )
+            )
 
         nr_pages = len(data) >> 2
         page = 0
@@ -2513,7 +3580,7 @@ class HFMFUELOAD(DeviceRequiredUnit):
             if offset >= len(data):
                 page_data = bytes.fromhex("00000000") * cur_count
             else:
-                page_data = data[offset:offset + 4 * cur_count]
+                page_data = data[offset : offset + 4 * cur_count]
 
             self.cmd.mfu_write_emu_page_data(page, page_data)
             page += cur_count
@@ -2521,16 +3588,21 @@ class HFMFUELOAD(DeviceRequiredUnit):
         print(" - Ok")
 
 
-@hf_mfu.command('esave')
+@hf_mfu.command("esave")
 class HFMFUESAVE(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'MIFARE Ultralight / NTAG save emulator data'
+        parser.description = "MIFARE Ultralight / NTAG save emulator data"
         parser.add_argument(
-            '-f', '--file', required=True, type=str, help='File to save data to.'
+            "-f", "--file", required=True, type=str, help="File to save data to."
         )
         parser.add_argument(
-            '-t', '--type', type=str, required=False, help="Force writing as either raw binary or hex.", choices=['bin', 'hex']
+            "-t",
+            "--type",
+            type=str,
+            required=False,
+            help="Force writing as either raw binary or hex.",
+            choices=["bin", "hex"],
         )
         return parser
 
@@ -2547,16 +3619,16 @@ class HFMFUESAVE(DeviceRequiredUnit):
         save_as_eml = False
 
         if file_type is None:
-            if args.file.endswith('.eml') or args.file.endswith('.txt'):
-                file_type = 'hex'
+            if args.file.endswith(".eml") or args.file.endswith(".txt"):
+                file_type = "hex"
             else:
-                file_type = 'bin'
+                file_type = "bin"
 
-        if file_type == 'hex':
-            fd = open(args.file, 'w+')
+        if file_type == "hex":
+            fd = open(args.file, "w+")
             save_as_eml = True
         else:
-            fd = open(args.file, 'wb+')
+            fd = open(args.file, "wb+")
 
         with fd:
             # this will throw an exception on incorrect slot type
@@ -2588,7 +3660,7 @@ class HFMFUESAVE(DeviceRequiredUnit):
                 data = self.cmd.mfu_read_emu_page_data(page, cur_count)
                 if save_as_eml:
                     for i in range(0, len(data), 4):
-                        fd.write(data[i:i+4].hex() + "\n")
+                        fd.write(data[i : i + 4].hex() + "\n")
                 else:
                     fd.write(data)
 
@@ -2597,31 +3669,41 @@ class HFMFUESAVE(DeviceRequiredUnit):
         print(" - Ok")
 
 
-@hf_mfu.command('rcnt')
+@hf_mfu.command("rcnt")
 class HFMFURCNT(MFUAuthArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = super().args_parser()
-        parser.description = 'MIFARE Ultralight / NTAG read counter'
-        parser.add_argument('-c', '--counter', type=int, required=True, metavar="<dec>",
-                            help="Index of the counter to read (always 0 for NTAG, 0-2 for Ultralight EV1).")
+        parser.description = "MIFARE Ultralight / NTAG read counter"
+        parser.add_argument(
+            "-c",
+            "--counter",
+            type=int,
+            required=True,
+            metavar="<dec>",
+            help="Index of the counter to read (always 0 for NTAG, 0-2 for Ultralight EV1).",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         param = self.get_param(args)
 
         options = {
-            'activate_rf_field': 0,
-            'wait_response': 1,
-            'append_crc': 1,
-            'auto_select': 1,
-            'keep_rf_field': 0,
-            'check_response_crc': 1,
+            "activate_rf_field": 0,
+            "wait_response": 1,
+            "append_crc": 1,
+            "auto_select": 1,
+            "keep_rf_field": 0,
+            "check_response_crc": 1,
         }
 
         if param.key is not None:
-            options['keep_rf_field'] = 1
+            options["keep_rf_field"] = 1
             try:
-                resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200, data=struct.pack('!B', 0x1B)+param.key)
+                resp = self.cmd.hf14a_raw(
+                    options=options,
+                    resp_timeout_ms=200,
+                    data=struct.pack("!B", 0x1B) + param.key,
+                )
 
                 failed_auth = len(resp) < 2
                 if not failed_auth:
@@ -2630,36 +3712,69 @@ class HFMFURCNT(MFUAuthArgsUnit):
                 # failed auth may cause tags to be lost
                 failed_auth = True
 
-            options['keep_rf_field'] = 0
-            options['auto_select'] = 0
+            options["keep_rf_field"] = 0
+            options["auto_select"] = 0
         else:
             failed_auth = False
 
         if not failed_auth:
-            resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200, data=struct.pack('!BB', 0x39, args.counter))
+            resp = self.cmd.hf14a_raw(
+                options=options,
+                resp_timeout_ms=200,
+                data=struct.pack("!BB", 0x39, args.counter),
+            )
             print(f" - Data: {resp[:3].hex()}")
         else:
             try:
-                self.cmd.hf14a_raw(options=options, resp_timeout_ms=200, data=struct.pack('!BB', 0x39, args.counter))
+                self.cmd.hf14a_raw(
+                    options=options,
+                    resp_timeout_ms=200,
+                    data=struct.pack("!BB", 0x39, args.counter),
+                )
             except:
                 # we may lose the tag again here
                 pass
             print(color_string((CR, " - Auth failed")))
 
 
-@hf_mfu.command('dump')
+@hf_mfu.command("dump")
 class HFMFUDUMP(MFUAuthArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = super().args_parser()
-        parser.description = 'MIFARE Ultralight dump pages'
-        parser.add_argument('-p', '--page', type=int, required=False, metavar="<dec>", default=0,
-                            help="Manually set number of pages to dump")
-        parser.add_argument('-q', '--qty', type=int, required=False, metavar="<dec>",
-                            help="Manually set number of pages to dump")
-        parser.add_argument('-f', '--file', type=str, required=False, default="",
-                            help="Specify a filename for dump file")
-        parser.add_argument('-t', '--type', type=str, required=False, choices=['bin', 'hex'],
-                            help="Force writing as either raw binary or hex.")
+        parser.description = "MIFARE Ultralight dump pages"
+        parser.add_argument(
+            "-p",
+            "--page",
+            type=int,
+            required=False,
+            metavar="<dec>",
+            default=0,
+            help="Manually set number of pages to dump",
+        )
+        parser.add_argument(
+            "-q",
+            "--qty",
+            type=int,
+            required=False,
+            metavar="<dec>",
+            help="Manually set number of pages to dump",
+        )
+        parser.add_argument(
+            "-f",
+            "--file",
+            type=str,
+            required=False,
+            default="",
+            help="Specify a filename for dump file",
+        )
+        parser.add_argument(
+            "-t",
+            "--type",
+            type=str,
+            required=False,
+            choices=["bin", "hex"],
+            help="Force writing as either raw binary or hex.",
+        )
         return parser
 
     def do_dump(self, args: argparse.Namespace, param, fd, save_as_eml):
@@ -2675,18 +3790,23 @@ class HFMFUDUMP(MFUAuthArgsUnit):
         elif len(tags) == 0:
             print(f"- {color_string((CR, 'No tag detected.'))}")
             return
-        elif tags[0]['atqa'] != b'\x44\x00' or tags[0]['sak'] != b'\x00':
-            err = color_string((CR, f"Tag is not Mifare Ultralight compatible (ATQA {tags[0]['atqa'].hex()} SAK {tags[0]['sak'].hex()})."))
+        elif tags[0]["atqa"] != b"\x44\x00" or tags[0]["sak"] != b"\x00":
+            err = color_string(
+                (
+                    CR,
+                    f"Tag is not Mifare Ultralight compatible (ATQA {tags[0]['atqa'].hex()} SAK {tags[0]['sak'].hex()}).",
+                )
+            )
             print(f"- {err}")
             return
 
         options = {
-            'activate_rf_field': 0,
-            'wait_response': 1,
-            'append_crc': 1,
-            'auto_select': 1,
-            'keep_rf_field': 1,
-            'check_response_crc': 1,
+            "activate_rf_field": 0,
+            "wait_response": 1,
+            "append_crc": 1,
+            "auto_select": 1,
+            "keep_rf_field": 1,
+            "check_response_crc": 1,
         }
 
         # if stop page isn't set manually, try autodetection
@@ -2695,7 +3815,9 @@ class HFMFUDUMP(MFUAuthArgsUnit):
 
             # first try sending the GET_VERSION command
             try:
-                version = self.cmd.hf14a_raw(options=options, resp_timeout_ms=100, data=struct.pack('!B', 0x60))
+                version = self.cmd.hf14a_raw(
+                    options=options, resp_timeout_ms=100, data=struct.pack("!B", 0x60)
+                )
                 if len(version) == 0:
                     version = None
             except:
@@ -2703,8 +3825,16 @@ class HFMFUDUMP(MFUAuthArgsUnit):
 
             # try sending AUTHENTICATE command and observe the result
             try:
-                supports_auth = len(self.cmd.hf14a_raw(
-                    options=options, resp_timeout_ms=100, data=struct.pack('!B', 0x1A))) != 0
+                supports_auth = (
+                    len(
+                        self.cmd.hf14a_raw(
+                            options=options,
+                            resp_timeout_ms=100,
+                            data=struct.pack("!B", 0x1A),
+                        )
+                    )
+                    != 0
+                )
             except:
                 supports_auth = False
 
@@ -2713,20 +3843,24 @@ class HFMFUDUMP(MFUAuthArgsUnit):
                 assert len(version) == 8
 
                 is_mikron_ulev1 = version[1] == 0x34 and version[2] == 0x21
-                if (version[2] == 3 or is_mikron_ulev1) and version[4] == 1 and version[5] == 0:
+                if (
+                    (version[2] == 3 or is_mikron_ulev1)
+                    and version[4] == 1
+                    and version[5] == 0
+                ):
                     # Ultralight EV1 V0
                     size_map = {
-                        0x0B: ('Mifare Ultralight EV1 48b', 20),
-                        0x0E: ('Mifare Ultralight EV1 128b', 41),
+                        0x0B: ("Mifare Ultralight EV1 48b", 20),
+                        0x0E: ("Mifare Ultralight EV1 128b", 41),
                     }
                 elif version[2] == 4 and version[4] == 1 and version[5] == 0:
                     # NTAG 210/212/213/215/216 V0
                     size_map = {
-                        0x0B: ('NTAG 210', 20),
-                        0x0E: ('NTAG 212', 41),
-                        0x0F: ('NTAG 213', 45),
-                        0x11: ('NTAG 215', 135),
-                        0x13: ('NTAG 216', 231),
+                        0x0B: ("NTAG 210", 20),
+                        0x0E: ("NTAG 212", 41),
+                        0x0F: ("NTAG 213", 45),
+                        0x11: ("NTAG 215", 135),
+                        0x13: ("NTAG 216", 231),
                     }
                 else:
                     size_map = {}
@@ -2735,25 +3869,33 @@ class HFMFUDUMP(MFUAuthArgsUnit):
                     tag_name, stop_page = size_map[version[6]]
             elif version is None and supports_auth:
                 # Ultralight C
-                tag_name = 'Mifare Ultralight C'
+                tag_name = "Mifare Ultralight C"
                 stop_page = 48
             elif version is None and not supports_auth:
                 try:
                     # Invalid command returning a NAK means that's some old type of NTAG.
-                    self.cmd.hf14a_raw(options=options, resp_timeout_ms=100, data=struct.pack('!B', 0xFF))
+                    self.cmd.hf14a_raw(
+                        options=options,
+                        resp_timeout_ms=100,
+                        data=struct.pack("!B", 0xFF),
+                    )
 
-                    print(color_string((CY, "Tag is likely NTAG 20x, reading until first error.")))
+                    print(
+                        color_string(
+                            (CY, "Tag is likely NTAG 20x, reading until first error.")
+                        )
+                    )
                     stop_page = 256
                 except:
                     # Regular Ultralight
-                    tag_name = 'Mifare Ultralight'
+                    tag_name = "Mifare Ultralight"
                     stop_page = 16
             else:
                 # This is probably Ultralight AES, but we don't support this one yet.
                 pass
 
             if tag_name is not None:
-                print(f' - Detected tag type as {tag_name}.')
+                print(f" - Detected tag type as {tag_name}.")
 
             if stop_page is None:
                 err_str = "Couldn't autodetect the expected card size, reading until first error."
@@ -2764,7 +3906,11 @@ class HFMFUDUMP(MFUAuthArgsUnit):
 
         if param.key is not None:
             try:
-                resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200, data=struct.pack('!B', 0x1B)+param.key)
+                resp = self.cmd.hf14a_raw(
+                    options=options,
+                    resp_timeout_ms=200,
+                    data=struct.pack("!B", 0x1B) + param.key,
+                )
 
                 needs_stop = len(resp) < 2
                 if not needs_stop:
@@ -2773,7 +3919,7 @@ class HFMFUDUMP(MFUAuthArgsUnit):
                 # failed auth may cause tags to be lost
                 needs_stop = True
 
-            options['auto_select'] = 0
+            options["auto_select"] = 0
 
         # this handles auth failure
         if needs_stop:
@@ -2785,15 +3931,23 @@ class HFMFUDUMP(MFUAuthArgsUnit):
         for i in range(args.page, stop_page):
             # this could be done once in theory but the command would need to be optimized properly
             if param.key is not None and not needs_stop:
-                resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200, data=struct.pack('!B', 0x1B)+param.key)
-                options['auto_select'] = 0  # prevent resets
+                resp = self.cmd.hf14a_raw(
+                    options=options,
+                    resp_timeout_ms=200,
+                    data=struct.pack("!B", 0x1B) + param.key,
+                )
+                options["auto_select"] = 0  # prevent resets
 
             # disable the rf field after the last command
             if i == (stop_page - 1) or needs_stop:
-                options['keep_rf_field'] = 0
+                options["keep_rf_field"] = 0
 
             try:
-                resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200, data=struct.pack('!BB', 0x30, i))
+                resp = self.cmd.hf14a_raw(
+                    options=options,
+                    resp_timeout_ms=200,
+                    data=struct.pack("!BB", 0x30, i),
+                )
             except:
                 # probably lost tag, but we still need to disable rf field
                 resp = None
@@ -2807,7 +3961,7 @@ class HFMFUDUMP(MFUAuthArgsUnit):
                 continue
 
             # after the read we are sure we no longer need to select again
-            options['auto_select'] = 0
+            options["auto_select"] = 0
 
             # TODO: can be optimized as we get 4 pages at once but beware of wrapping
             # in case of end of memory or LOCK on ULC and no key provided
@@ -2815,13 +3969,13 @@ class HFMFUDUMP(MFUAuthArgsUnit):
             print(f" - Page {i:2}: {data.hex()}")
             if fd is not None:
                 if save_as_eml:
-                    fd.write(data.hex()+'\n')
+                    fd.write(data.hex() + "\n")
                 else:
                     fd.write(data)
 
         if needs_stop and stop_page != 256:
             print(f"- {color_string((CY, 'Dump is shorter than expected.'))}")
-        if args.file != '':
+        if args.file != "":
             print(f"- {color_string((CG, f'Dump written in {args.file}.'))}")
 
     def on_exec(self, args: argparse.Namespace):
@@ -2831,18 +3985,18 @@ class HFMFUDUMP(MFUAuthArgsUnit):
         fd = None
         save_as_eml = False
 
-        if args.file != '':
+        if args.file != "":
             if file_type is None:
-                if args.file.endswith('.eml') or args.file.endswith('.txt'):
-                    file_type = 'hex'
+                if args.file.endswith(".eml") or args.file.endswith(".txt"):
+                    file_type = "hex"
                 else:
-                    file_type = 'bin'
+                    file_type = "bin"
 
-            if file_type == 'hex':
-                fd = open(args.file, 'w+')
+            if file_type == "hex":
+                fd = open(args.file, "w+")
                 save_as_eml = True
             else:
-                fd = open(args.file, 'wb+')
+                fd = open(args.file, "wb+")
 
         if fd is not None:
             with fd:
@@ -2852,66 +4006,72 @@ class HFMFUDUMP(MFUAuthArgsUnit):
             self.do_dump(args, param, fd, save_as_eml)
 
 
-@hf_mfu.command('version')
+@hf_mfu.command("version")
 class HFMFUVERSION(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Request MIFARE Ultralight / NTAG version data.'
+        parser.description = "Request MIFARE Ultralight / NTAG version data."
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         options = {
-            'activate_rf_field': 0,
-            'wait_response': 1,
-            'append_crc': 1,
-            'auto_select': 1,
-            'keep_rf_field': 0,
-            'check_response_crc': 1,
+            "activate_rf_field": 0,
+            "wait_response": 1,
+            "append_crc": 1,
+            "auto_select": 1,
+            "keep_rf_field": 0,
+            "check_response_crc": 1,
         }
 
-        resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200, data=struct.pack('!B', 0x60))
+        resp = self.cmd.hf14a_raw(
+            options=options, resp_timeout_ms=200, data=struct.pack("!B", 0x60)
+        )
         print(f" - Data: {resp[:8].hex()}")
 
 
-@hf_mfu.command('signature')
+@hf_mfu.command("signature")
 class HFMFUSIGNATURE(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Request MIFARE Ultralight / NTAG ECC signature data.'
+        parser.description = "Request MIFARE Ultralight / NTAG ECC signature data."
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         options = {
-            'activate_rf_field': 0,
-            'wait_response': 1,
-            'append_crc': 1,
-            'auto_select': 1,
-            'keep_rf_field': 0,
-            'check_response_crc': 1,
+            "activate_rf_field": 0,
+            "wait_response": 1,
+            "append_crc": 1,
+            "auto_select": 1,
+            "keep_rf_field": 0,
+            "check_response_crc": 1,
         }
 
-        resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200, data=struct.pack('!BB', 0x3C, 0x00))
+        resp = self.cmd.hf14a_raw(
+            options=options, resp_timeout_ms=200, data=struct.pack("!BB", 0x3C, 0x00)
+        )
         print(f" - Data: {resp[:32].hex()}")
 
 
-@hf_mfu.command('authnonce')
+@hf_mfu.command("authnonce")
 class HFMFUAUTHNONCE(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Get authentication nonce from MIFARE Ultralight C tag.'
+        parser.description = "Get authentication nonce from MIFARE Ultralight C tag."
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         options = {
-            'activate_rf_field': 0,
-            'wait_response': 1,
-            'append_crc': 1,
-            'auto_select': 1,
-            'keep_rf_field': 0,
-            'check_response_crc': 1,
+            "activate_rf_field": 0,
+            "wait_response": 1,
+            "append_crc": 1,
+            "auto_select": 1,
+            "keep_rf_field": 0,
+            "check_response_crc": 1,
         }
 
-        resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200, data=struct.pack('!BB', 0x1A, 0x00))
+        resp = self.cmd.hf14a_raw(
+            options=options, resp_timeout_ms=200, data=struct.pack("!BB", 0x1A, 0x00)
+        )
         # Response is 0xAF + 8 bytes nonce + 2 bytes CRC = 11 bytes
         # We want to display just the 8-byte nonce (skip 0xAF prefix)
         if len(resp) >= 9 and resp[0] == 0xAF:
@@ -2925,7 +4085,9 @@ class CrackEffect:
     A class to create a visual effect of cracking blocks of data.
     """
 
-    def __init__(self, num_blocks: int = 4, block_size: int = 8, scramble_delay: float = 0.01):
+    def __init__(
+        self, num_blocks: int = 4, block_size: int = 8, scramble_delay: float = 0.01
+    ):
         """
         Initialize the CrackEffect class with the given parameters.
 
@@ -2938,7 +4100,7 @@ class CrackEffect:
         self.block_size = block_size
         self.scramble_delay = scramble_delay
         self.message_queue = queue.Queue()
-        self.revealed = [''] * num_blocks
+        self.revealed = [""] * num_blocks
         self.stop_event = threading.Event()
         self.cracked_blocks = set()
         self.display_lock = threading.Lock()
@@ -2947,8 +4109,9 @@ class CrackEffect:
     def generate_random_hex(self) -> str:
         """Generate a random hex string of block_size length."""
         import random
-        hex_chars = '0123456789ABCDEF'
-        return ''.join(random.choice(hex_chars) for _ in range(self.block_size))
+
+        hex_chars = "0123456789ABCDEF"
+        return "".join(random.choice(hex_chars) for _ in range(self.block_size))
 
     def format_block(self, block: str, is_cracked: bool) -> str:
         """Format a block with appropriate color based on its state."""
@@ -2990,7 +4153,7 @@ class CrackEffect:
                 self.format_block(block, i in self.cracked_blocks)
                 for i, block in enumerate(self.revealed)
             ]
-            display_text = ' '.join(formatted_blocks)
+            display_text = " ".join(formatted_blocks)
 
             # Update only the middle line
             sys.stdout.write(f"\r║  {display_text}   ║")
@@ -3015,7 +4178,7 @@ class CrackEffect:
             return
         for block in range(self.num_blocks):
             if block not in self.cracked_blocks:
-                self.revealed[block] = '.' * self.block_size
+                self.revealed[block] = "." * self.block_size
         self.display_current_state()
 
     def process_message_queue(self):
@@ -3068,19 +4231,37 @@ class CrackEffect:
         scramble_thread.join()
 
 
-@hf_mfu.command('ulcg')
+@hf_mfu.command("ulcg")
 class HFMFUULCG(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Key recovery for Giantec ULCG and USCUID-UL cards (won\'t work on NXP cards!)'
-        parser.add_argument('-c', '--challenges', type=int, default=1000,
-                          help='Number of challenges to collect (default: 1000)')
-        parser.add_argument('-t', '--threads', type=int, default=1,
-                          help='Number of threads for key recovery (default: 1)')
-        parser.add_argument('-j', '--json', type=str,
-                          help='Path to JSON file to load or save challenges')
-        parser.add_argument('-o', '--offline', action='store_true',
-                          help='Use offline mode with pre-collected challenges')
+        parser.description = "Key recovery for Giantec ULCG and USCUID-UL cards (won't work on NXP cards!)"
+        parser.add_argument(
+            "-c",
+            "--challenges",
+            type=int,
+            default=1000,
+            help="Number of challenges to collect (default: 1000)",
+        )
+        parser.add_argument(
+            "-t",
+            "--threads",
+            type=int,
+            default=1,
+            help="Number of threads for key recovery (default: 1)",
+        )
+        parser.add_argument(
+            "-j",
+            "--json",
+            type=str,
+            help="Path to JSON file to load or save challenges",
+        )
+        parser.add_argument(
+            "-o",
+            "--offline",
+            action="store_true",
+            help="Use offline mode with pre-collected challenges",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -3121,26 +4302,31 @@ class HFMFUULCG(ReaderRequiredUnit):
 
         # Check AUTH0 configuration
         options = {
-            'activate_rf_field': 0,
-            'wait_response': 1,
-            'append_crc': 1,
-            'auto_select': 1,
-            'keep_rf_field': 0,
-            'check_response_crc': 1,
+            "activate_rf_field": 0,
+            "wait_response": 1,
+            "append_crc": 1,
+            "auto_select": 1,
+            "keep_rf_field": 0,
+            "check_response_crc": 1,
         }
 
         # Read page 40-43 (config pages)
-        resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200,
-                                 data=struct.pack('!BB', 0x30, 0x28))  # READ page 40
+        resp = self.cmd.hf14a_raw(
+            options=options, resp_timeout_ms=200, data=struct.pack("!BB", 0x30, 0x28)
+        )  # READ page 40
 
         if len(resp) < 16:
-            print("[-] Error: Card not unlocked. Run relay attack in UNLOCK mode first.")
+            print(
+                "[-] Error: Card not unlocked. Run relay attack in UNLOCK mode first."
+            )
             return None
 
         # Check AUTH0 (should be >= 0x30)
         minimum_auth_page = resp[8]
         if minimum_auth_page < 48:
-            print("[-] Error: Card not unlocked. Run relay attack in UNLOCK mode first.")
+            print(
+                "[-] Error: Card not unlocked. Run relay attack in UNLOCK mode first."
+            )
             return None
 
         # Check lock bit
@@ -3149,7 +4335,9 @@ class HFMFUULCG(ReaderRequiredUnit):
             print("[-] Error: Card is not vulnerable (key is locked)")
             return None
 
-        print("[+] All sanity checks \033[1;32mpassed\033[0m. Checking if card is vulnerable.\033[?25l")
+        print(
+            "[+] All sanity checks \033[1;32mpassed\033[0m. Checking if card is vulnerable.\033[?25l"
+        )
 
         # Collect 100 challenges to check for collision
         challenges_collected = 0
@@ -3158,8 +4346,11 @@ class HFMFUULCG(ReaderRequiredUnit):
         collision = False
 
         while challenges_collected < num_challenges:
-            resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200,
-                                     data=struct.pack('!BB', 0x1A, 0x00))
+            resp = self.cmd.hf14a_raw(
+                options=options,
+                resp_timeout_ms=200,
+                data=struct.pack("!BB", 0x1A, 0x00),
+            )
             if len(resp) >= 9 and resp[0] == 0xAF:
                 hex_challenge = resp[1:9].hex().upper()
                 if hex_challenge in challenges_100:
@@ -3181,33 +4372,37 @@ class HFMFUULCG(ReaderRequiredUnit):
         print("[+] Collecting key-specific challenges...")
 
         # Overwrite block 47 and collect challenge_75
-        self.write_block(47, b'\x00\x00\x00\x00')
-        resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200,
-                                 data=struct.pack('!BB', 0x1A, 0x00))
+        self.write_block(47, b"\x00\x00\x00\x00")
+        resp = self.cmd.hf14a_raw(
+            options=options, resp_timeout_ms=200, data=struct.pack("!BB", 0x1A, 0x00)
+        )
         if len(resp) >= 9 and resp[0] == 0xAF:
             challenges["challenge_75"] = resp[1:9].hex().upper()
         print("[+] 75 collection complete")
 
         # Overwrite block 46 and collect challenge_50
-        self.write_block(46, b'\x00\x00\x00\x00')
-        resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200,
-                                 data=struct.pack('!BB', 0x1A, 0x00))
+        self.write_block(46, b"\x00\x00\x00\x00")
+        resp = self.cmd.hf14a_raw(
+            options=options, resp_timeout_ms=200, data=struct.pack("!BB", 0x1A, 0x00)
+        )
         if len(resp) >= 9 and resp[0] == 0xAF:
             challenges["challenge_50"] = resp[1:9].hex().upper()
         print("[+] 50 collection complete")
 
         # Overwrite block 45 and collect challenge_25
-        self.write_block(45, b'\x00\x00\x00\x00')
-        resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200,
-                                 data=struct.pack('!BB', 0x1A, 0x00))
+        self.write_block(45, b"\x00\x00\x00\x00")
+        resp = self.cmd.hf14a_raw(
+            options=options, resp_timeout_ms=200, data=struct.pack("!BB", 0x1A, 0x00)
+        )
         if len(resp) >= 9 and resp[0] == 0xAF:
             challenges["challenge_25"] = resp[1:9].hex().upper()
         print("[+] 25 collection complete")
 
         # Overwrite block 44 and collect challenge_0
-        self.write_block(44, b'\x00\x00\x00\x00')
-        resp = self.cmd.hf14a_raw(options=options, resp_timeout_ms=200,
-                                 data=struct.pack('!BB', 0x1A, 0x00))
+        self.write_block(44, b"\x00\x00\x00\x00")
+        resp = self.cmd.hf14a_raw(
+            options=options, resp_timeout_ms=200, data=struct.pack("!BB", 0x1A, 0x00)
+        )
         if len(resp) >= 9 and resp[0] == 0xAF:
             challenges["challenge_0"] = resp[1:9].hex().upper()
         print("[+] 0 collection complete")
@@ -3217,15 +4412,15 @@ class HFMFUULCG(ReaderRequiredUnit):
     def write_block(self, block, data):
         """Write a block using hf14a_raw"""
         options = {
-            'activate_rf_field': 0,
-            'wait_response': 1,
-            'append_crc': 1,
-            'auto_select': 1,
-            'keep_rf_field': 0,
-            'check_response_crc': 1,
+            "activate_rf_field": 0,
+            "wait_response": 1,
+            "append_crc": 1,
+            "auto_select": 1,
+            "keep_rf_field": 0,
+            "check_response_crc": 1,
         }
         # WRITE command (0xA2) + block number + 4 bytes of data
-        cmd_data = struct.pack('!BB4s', 0xA2, block, data)
+        cmd_data = struct.pack("!BB4s", 0xA2, block, data)
         self.cmd.hf14a_raw(options=options, resp_timeout_ms=200, data=cmd_data)
 
     def crack_key(self, challenges, num_threads, offline):
@@ -3233,7 +4428,7 @@ class HFMFUULCG(ReaderRequiredUnit):
         import signal
         import traceback
 
-        key_segment_values = {0: "00"*4, 1: "00"*4, 2: "00"*4, 3: "00"*4}
+        key_segment_values = {0: "00" * 4, 1: "00" * 4, 2: "00" * 4, 3: "00" * 4}
         key_found = False
 
         print("[+] Cracking in progress...\033[?25l")
@@ -3250,10 +4445,12 @@ class HFMFUULCG(ReaderRequiredUnit):
 
         signal.signal(signal.SIGINT, signal_handler)
 
-        ciphertexts = {1: challenges["challenge_25"],
-                      0: challenges["challenge_50"],
-                      3: challenges["challenge_75"],
-                      2: challenges["challenge_100"]}
+        ciphertexts = {
+            1: challenges["challenge_25"],
+            0: challenges["challenge_50"],
+            3: challenges["challenge_75"],
+            2: challenges["challenge_100"],
+        }
 
         try:
             for key_segment_idx in [1, 0, 3, 2]:
@@ -3262,15 +4459,17 @@ class HFMFUULCG(ReaderRequiredUnit):
                 cmd = [
                     str(default_cwd / "mfulc_des_brute"),
                     "-c",
-                    challenges['challenge_0'],
+                    challenges["challenge_0"],
                     ciphertext,
                     "".join(key_segment_values.values()),
                     str(key_segment_idx + 1),
-                    str(num_threads)
+                    str(num_threads),
                 ]
 
                 try:
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+                    result = subprocess.run(
+                        cmd, capture_output=True, text=True, timeout=3600
+                    )
 
                     if "Could not detect LFSR" in result.stderr:
                         key_found = False
@@ -3283,28 +4482,42 @@ class HFMFUULCG(ReaderRequiredUnit):
                         key_found = False
                         crack_effect.stop_event.set()
                         crack_effect.erase_key()
-                        print(f"\n\n\n[-] Error: No matching key found for segment {key_segment_idx + 1}\033[?25h")
+                        print(
+                            f"\n\n\n[-] Error: No matching key found for segment {key_segment_idx + 1}\033[?25h"
+                        )
                         break
 
                     if "Full key (hex): " not in result.stdout:
                         key_found = False
                         crack_effect.stop_event.set()
                         crack_effect.erase_key()
-                        print(f"\n\n\n[-] Error: Unexpected output from mfulc_des_brute\033[?25h")
+                        print(
+                            f"\n\n\n[-] Error: Unexpected output from mfulc_des_brute\033[?25h"
+                        )
                         break
 
                     # Extract the key segment from output
-                    full_key_line = [line for line in result.stdout.split('\n') if "Full key (hex):" in line][0]
+                    full_key_line = [
+                        line
+                        for line in result.stdout.split("\n")
+                        if "Full key (hex):" in line
+                    ][0]
                     full_key = full_key_line.split("Full key (hex): ")[1].strip()
-                    key_segment_values[key_segment_idx] = full_key[(8*key_segment_idx):][:8]
+                    key_segment_values[key_segment_idx] = full_key[
+                        (8 * key_segment_idx) :
+                    ][:8]
                     key_found = True
-                    crack_effect.add_cracked_block(key_segment_idx, key_segment_values[key_segment_idx])
+                    crack_effect.add_cracked_block(
+                        key_segment_idx, key_segment_values[key_segment_idx]
+                    )
 
                 except subprocess.TimeoutExpired:
                     key_found = False
                     crack_effect.stop_event.set()
                     crack_effect.erase_key()
-                    print(f"\n\n\n[-] Error: Timeout cracking segment {key_segment_idx + 1}\033[?25h")
+                    print(
+                        f"\n\n\n[-] Error: Timeout cracking segment {key_segment_idx + 1}\033[?25h"
+                    )
                     break
                 except Exception as e:
                     key_found = False
@@ -3324,7 +4537,9 @@ class HFMFUULCG(ReaderRequiredUnit):
             formatted_key = f"\033[1;34m{result_key}\033[0m"
             print(f"[+] Found key: {formatted_key}\033[?25h")
             if offline:
-                print(f"You can restore found key on the card with appropriate write commands")
+                print(
+                    f"You can restore found key on the card with appropriate write commands"
+                )
             else:
                 # Restore the key on the card
                 print("[+] Restoring key to card...")
@@ -3343,39 +4558,60 @@ class HFMFUULCG(ReaderRequiredUnit):
                 # Write 4 blocks of 4 bytes each
                 for i in range(4):
                     block = 44 + i
-                    data = bytes(key_swapped[i*4:(i+1)*4])
+                    data = bytes(key_swapped[i * 4 : (i + 1) * 4])
                     self.write_block(block, data)
                 print("[+] Key restored on the card")
 
 
-@hf_mfu.command('econfig')
+@hf_mfu.command("econfig")
 class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Settings of Mifare Ultralight / NTAG emulator'
+        parser.description = "Settings of Mifare Ultralight / NTAG emulator"
         self.add_slot_args(parser)
         self.add_hf14a_anticoll_args(parser)
         uid_magic_group = parser.add_mutually_exclusive_group()
-        uid_magic_group.add_argument('--enable-uid-magic', action='store_true', help="Enable UID magic mode")
-        uid_magic_group.add_argument('--disable-uid-magic', action='store_true', help="Disable UID magic mode")
+        uid_magic_group.add_argument(
+            "--enable-uid-magic", action="store_true", help="Enable UID magic mode"
+        )
+        uid_magic_group.add_argument(
+            "--disable-uid-magic", action="store_true", help="Disable UID magic mode"
+        )
 
         # Add this new write mode parameter
         write_names = [w.name for w in MifareUltralightWriteMode.list()]
         help_str = "Write Mode: " + ", ".join(write_names)
-        parser.add_argument('--write', type=str, help=help_str, metavar="MODE", choices=write_names)
+        parser.add_argument(
+            "--write", type=str, help=help_str, metavar="MODE", choices=write_names
+        )
 
-        parser.add_argument('--set-version', type=bytes.fromhex,
-                            help="Set data to be returned by the GET_VERSION command.")
-        parser.add_argument('--set-signature', type=bytes.fromhex,
-                            help="Set data to be returned by the READ_SIG command.")
-        parser.add_argument('--reset-auth-cnt', action='store_true',
-                            help="Resets the counter of unsuccessful authentication attempts.")
+        parser.add_argument(
+            "--set-version",
+            type=bytes.fromhex,
+            help="Set data to be returned by the GET_VERSION command.",
+        )
+        parser.add_argument(
+            "--set-signature",
+            type=bytes.fromhex,
+            help="Set data to be returned by the READ_SIG command.",
+        )
+        parser.add_argument(
+            "--reset-auth-cnt",
+            action="store_true",
+            help="Resets the counter of unsuccessful authentication attempts.",
+        )
 
         detection_group = parser.add_mutually_exclusive_group()
-        detection_group.add_argument('--enable-log', action='store_true',
-                                   help="Enable password authentication logging")
-        detection_group.add_argument('--disable-log', action='store_true',
-                                   help="Disable password authentication logging")
+        detection_group.add_argument(
+            "--enable-log",
+            action="store_true",
+            help="Enable password authentication logging",
+        )
+        detection_group.add_argument(
+            "--disable-log",
+            action="store_true",
+            help="Disable password authentication logging",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -3393,7 +4629,9 @@ class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequired
             try:
                 self.cmd.mf0_ntag_set_version_data(args.set_version)
             except:
-                print(color_string((CR, "Tag type does not support GET_VERSION command.")))
+                print(
+                    color_string((CR, "Tag type does not support GET_VERSION command."))
+                )
                 return
 
         if args.set_signature is not None:
@@ -3415,20 +4653,26 @@ class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequired
             old_value = self.cmd.mfu_reset_auth_cnt()
             if old_value != 0:
                 aux_data_changed = True
-                print(f"- Unsuccessful auth counter has been reset from {old_value} to 0.")
+                print(
+                    f"- Unsuccessful auth counter has been reset from {old_value} to 0."
+                )
 
         # collect current settings
         anti_coll_data = self.cmd.hf14a_get_anti_coll_data()
         if len(anti_coll_data) == 0:
-            print(color_string((CR, f"Slot {self.slot_num} does not contain any HF 14A config")))
+            print(
+                color_string(
+                    (CR, f"Slot {self.slot_num} does not contain any HF 14A config")
+                )
+            )
             return
-        uid = anti_coll_data['uid']
-        atqa = anti_coll_data['atqa']
-        sak = anti_coll_data['sak']
-        ats = anti_coll_data['ats']
+        uid = anti_coll_data["uid"]
+        atqa = anti_coll_data["atqa"]
+        sak = anti_coll_data["sak"]
+        ats = anti_coll_data["ats"]
         slotinfo = self.cmd.get_slot_info()
         fwslot = SlotNumber.to_fw(self.slot_num)
-        hf_tag_type = TagSpecificType(slotinfo[fwslot]['hf'])
+        hf_tag_type = TagSpecificType(slotinfo[fwslot]["hf"])
         if hf_tag_type not in [
             TagSpecificType.MF0ICU1,
             TagSpecificType.MF0ICU2,
@@ -3440,9 +4684,18 @@ class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequired
             TagSpecificType.NTAG_215,
             TagSpecificType.NTAG_216,
         ]:
-            print(color_string((CR, f"Slot {self.slot_num} not configured as MIFARE Ultralight / NTAG")))
+            print(
+                color_string(
+                    (
+                        CR,
+                        f"Slot {self.slot_num} not configured as MIFARE Ultralight / NTAG",
+                    )
+                )
+            )
             return
-        change_requested, change_done, uid, atqa, sak, ats = self.update_hf14a_anticoll(args, uid, atqa, sak, ats)
+        change_requested, change_done, uid, atqa, sak, ats = self.update_hf14a_anticoll(
+            args, uid, atqa, sak, ats
+        )
 
         if args.enable_uid_magic:
             change_requested = True
@@ -3469,7 +4722,14 @@ class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequired
                 else:
                     print(color_string((CY, "Requested write mode already set")))
             except:
-                print(color_string((CR, "Failed to set write mode. Check if device firmware supports this feature.")))
+                print(
+                    color_string(
+                        (
+                            CR,
+                            "Failed to set write mode. Check if device firmware supports this feature.",
+                        )
+                    )
+                )
 
         detection = self.cmd.mf0_ntag_get_detection_enable()
         if args.enable_log:
@@ -3480,9 +4740,20 @@ class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequired
                     self.cmd.mf0_ntag_set_detection_enable(detection)
                     change_done = True
                 else:
-                    print(color_string((CY, "Requested logging of MFU authentication data already enabled")))
+                    print(
+                        color_string(
+                            (
+                                CY,
+                                "Requested logging of MFU authentication data already enabled",
+                            )
+                        )
+                    )
             else:
-                print(color_string((CR, "Detection functionality not available in this firmware")))
+                print(
+                    color_string(
+                        (CR, "Detection functionality not available in this firmware")
+                    )
+                )
         elif args.disable_log:
             change_requested = True
             if detection is not None:
@@ -3491,29 +4762,42 @@ class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequired
                     self.cmd.mf0_ntag_set_detection_enable(detection)
                     change_done = True
                 else:
-                    print(color_string((CY, "Requested logging of MFU authentication data already disabled")))
+                    print(
+                        color_string(
+                            (
+                                CY,
+                                "Requested logging of MFU authentication data already disabled",
+                            )
+                        )
+                    )
             else:
-                print(color_string((CR, "Detection functionality not available in this firmware")))
+                print(
+                    color_string(
+                        (CR, "Detection functionality not available in this firmware")
+                    )
+                )
 
         if change_done or aux_data_changed:
-            print(' - MFU/NTAG Emulator settings updated')
+            print(" - MFU/NTAG Emulator settings updated")
         if not (change_requested or aux_data_change_requested):
             atqa_string = f"{atqa.hex().upper()} (0x{int.from_bytes(atqa, byteorder='little'):04x})"
-            print(f'- {"Type:":40}{color_string((CY, hf_tag_type))}')
-            print(f'- {"UID:":40}{color_string((CY, uid.hex().upper()))}')
-            print(f'- {"ATQA:":40}{color_string((CY, atqa_string))}')
-            print(f'- {"SAK:":40}{color_string((CY, sak.hex().upper()))}')
+            print(f"- {'Type:':40}{color_string((CY, hf_tag_type))}")
+            print(f"- {'UID:':40}{color_string((CY, uid.hex().upper()))}")
+            print(f"- {'ATQA:':40}{color_string((CY, atqa_string))}")
+            print(f"- {'SAK:':40}{color_string((CY, sak.hex().upper()))}")
             if len(ats) > 0:
-                print(f'- {"ATS:":40}{color_string((CY, ats.hex().upper()))}')
+                print(f"- {'ATS:':40}{color_string((CY, ats.hex().upper()))}")
 
             # Display UID Magic status
             magic_status = "enabled" if magic_mode else "disabled"
-            print(f'- {"UID Magic:":40}{color_string((CY, magic_status))}')
+            print(f"- {'UID Magic:':40}{color_string((CY, magic_status))}")
 
             # Add this to display write mode if available
             try:
-                write_mode = MifareUltralightWriteMode(self.cmd.mf0_ntag_get_write_mode())
-                print(f'- {"Write mode:":40}{color_string((CY, write_mode))}')
+                write_mode = MifareUltralightWriteMode(
+                    self.cmd.mf0_ntag_get_write_mode()
+                )
+                print(f"- {'Write mode:':40}{color_string((CY, write_mode))}")
             except:
                 # Write mode not supported in current firmware
                 pass
@@ -3521,31 +4805,46 @@ class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequired
             # Existing version/signature display code
             try:
                 version = self.cmd.mf0_ntag_get_version_data().hex().upper()
-                print(f'- {"Version:":40}{color_string((CY, version))}')
+                print(f"- {'Version:':40}{color_string((CY, version))}")
             except:
                 pass
 
             try:
                 signature = self.cmd.mf0_ntag_get_signature_data().hex().upper()
-                print(f'- {"Signature:":40}{color_string((CY, signature))}')
+                print(f"- {'Signature:':40}{color_string((CY, signature))}")
             except:
                 pass
 
             try:
-                detection = color_string((CG, "enabled")) if self.cmd.mf0_ntag_get_detection_enable() else color_string((CR, "disabled"))
-                print(
-                    f'- {"Log (password) mode:":40}{f"{detection}"}')
+                detection = (
+                    color_string((CG, "enabled"))
+                    if self.cmd.mf0_ntag_get_detection_enable()
+                    else color_string((CR, "disabled"))
+                )
+                print(f"- {'Log (password) mode:':40}{f'{detection}'}")
             except:
                 pass
 
-@hf_mfu.command('edetect')
+
+@hf_mfu.command("edetect")
 class HFMFUEDetect(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Get Mifare Ultralight / NTAG emulator detection logs'
+        parser.description = "Get Mifare Ultralight / NTAG emulator detection logs"
         self.add_slot_args(parser)
-        parser.add_argument('--count', type=int, help="Number of log entries to retrieve", metavar="COUNT")
-        parser.add_argument('--index', type=int, default=0, help="Starting index (default: 0)", metavar="INDEX")
+        parser.add_argument(
+            "--count",
+            type=int,
+            help="Number of log entries to retrieve",
+            metavar="COUNT",
+        )
+        parser.add_argument(
+            "--index",
+            type=int,
+            default=0,
+            help="Starting index (default: 0)",
+            metavar="INDEX",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -3572,20 +4871,22 @@ class HFMFUEDetect(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
 
         logs = self.cmd.mf0_ntag_get_detection_log(args.index)
 
-        print(f"\nPassword detection logs (showing {len(logs)} entries from index {args.index}):")
+        print(
+            f"\nPassword detection logs (showing {len(logs)} entries from index {args.index}):"
+        )
         print("-" * 50)
 
         for i, log_entry in enumerate(logs):
             actual_index = args.index + i
-            password = log_entry['password']
+            password = log_entry["password"]
             print(f"{actual_index:3d}: {color_string((CY, password.upper()))}")
 
 
-@lf_em_410x.command('read')
+@lf_em_410x.command("read")
 class LFEMRead(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Scan em410x tag and print id'
+        parser.description = "Scan em410x tag and print id"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -3593,11 +4894,11 @@ class LFEMRead(ReaderRequiredUnit):
         print(f"{TagSpecificType(data[0])}: {color_string((CG, data[1].hex()))}")
 
 
-@lf_em_410x.command('write')
+@lf_em_410x.command("write")
 class LFEM410xWriteT55xx(LFEMIdArgsUnit, ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Write em410x id to t55xx'
+        parser.description = "Write em410x id to t55xx"
         return self.add_card_arg(parser, required=True)
 
     def on_exec(self, args: argparse.Namespace):
@@ -3607,11 +4908,11 @@ class LFEM410xWriteT55xx(LFEMIdArgsUnit, ReaderRequiredUnit):
         print(f" - EM410x ID(10H): {id_hex} write done.")
 
 
-@lf_hid_prox.command('read')
+@lf_hid_prox.command("read")
 class LFHIDProxRead(LFHIDIdReadArgsUnit, ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Scan hid prox tag and print card format, facility code, card number, issue level and OEM code'
+        parser.description = "Scan hid prox tag and print card format, facility code, card number, issue level and OEM code"
         return self.add_card_arg(parser, required=True)
 
     def on_exec(self, args: argparse.Namespace):
@@ -3629,6 +4930,7 @@ class LFHIDProxRead(LFHIDIdReadArgsUnit, ReaderRequiredUnit):
             print(f" OEM: {color_string((CG, oem))}")
         print(f" CN: {color_string((CG, cn))}")
 
+
 @lf_hid_prox.command("write")
 class LFHIDProxWriteT55xx(LFHIDIdArgsUnit, ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -3644,7 +4946,15 @@ class LFHIDProxWriteT55xx(LFHIDIdArgsUnit, ReaderRequiredUnit):
         if args.oem is None:
             args.oem = 0
         format = HIDFormat[args.format]
-        id = struct.pack(">BIBIBH", format.value, args.fc, (args.cn >> 32), args.cn & 0xffffffff, args.il, args.oem)
+        id = struct.pack(
+            ">BIBIBH",
+            format.value,
+            args.fc,
+            (args.cn >> 32),
+            args.cn & 0xFFFFFFFF,
+            args.il,
+            args.oem,
+        )
         self.cmd.hidprox_write_to_t55xx(id)
         print(f"HIDProx/{format}")
         if args.fc > 0:
@@ -3656,11 +4966,12 @@ class LFHIDProxWriteT55xx(LFHIDIdArgsUnit, ReaderRequiredUnit):
         print(f" CN: {args.cn}")
         print("write done.")
 
-@lf_hid_prox.command('econfig')
+
+@lf_hid_prox.command("econfig")
 class LFHIDProxEconfig(SlotIndexArgsAndGoUnit, LFHIDIdArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Set emulated hidprox card id'
+        parser.description = "Set emulated hidprox card id"
         self.add_slot_args(parser)
         self.add_card_arg(parser)
         return parser
@@ -3676,13 +4987,21 @@ class LFHIDProxEconfig(SlotIndexArgsAndGoUnit, LFHIDIdArgsUnit):
             format = HIDFormat.H10301
             if args.format is not None:
                 format = HIDFormat[args.format]
-            id = struct.pack(">BIBIBH", format.value, args.fc, (args.cn >> 32), args.cn & 0xffffffff, args.il, args.oem)
+            id = struct.pack(
+                ">BIBIBH",
+                format.value,
+                args.fc,
+                (args.cn >> 32),
+                args.cn & 0xFFFFFFFF,
+                args.il,
+                args.oem,
+            )
             self.cmd.hidprox_set_emu_id(id)
-            print(' - Set hidprox tag id success.')
+            print(" - Set hidprox tag id success.")
         else:
             (format, fc, cn1, cn2, il, oem) = self.cmd.hidprox_get_emu_id()
             cn = (cn1 << 32) + cn2
-            print(' - Get hidprox tag id success.')
+            print(" - Get hidprox tag id success.")
             print(f" - HIDProx/{HIDFormat(format)}")
         if fc > 0:
             print(f"   FC: {color_string((CG, fc))}")
@@ -3692,11 +5011,12 @@ class LFHIDProxEconfig(SlotIndexArgsAndGoUnit, LFHIDIdArgsUnit):
             print(f"   OEM: {color_string((CG, oem))}")
         print(f"   CN: {color_string((CG, cn))}")
 
-@lf_viking.command('read')
+
+@lf_viking.command("read")
 class LFVikingRead(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Scan Viking tag and print id'
+        parser.description = "Scan Viking tag and print id"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -3704,11 +5024,11 @@ class LFVikingRead(ReaderRequiredUnit):
         print(f" Viking: {color_string((CG, id.hex()))}")
 
 
-@lf_viking.command('write')
+@lf_viking.command("write")
 class LFVikingWriteT55xx(LFVikingIdArgsUnit, ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Write Viking id to t55xx'
+        parser.description = "Write Viking id to t55xx"
         return self.add_card_arg(parser, required=True)
 
     def on_exec(self, args: argparse.Namespace):
@@ -3717,24 +5037,36 @@ class LFVikingWriteT55xx(LFVikingIdArgsUnit, ReaderRequiredUnit):
         self.cmd.viking_write_to_t55xx(id_bytes)
         print(f" - Viking ID(8H): {id_hex} write done.")
 
-@hw_slot.command('list')
+
+@hw_slot.command("list")
 class HWSlotList(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Get information about slots'
-        parser.add_argument('--short', action='store_true',
-                            help="Hide slot nicknames and Mifare Classic emulator settings")
+        parser.description = "Get information about slots"
+        parser.add_argument(
+            "--short",
+            action="store_true",
+            help="Hide slot nicknames and Mifare Classic emulator settings",
+        )
         return parser
 
     def get_slot_name(self, slot, sense):
         try:
             name = self.cmd.get_slot_tag_nick(slot, sense)
-            return {'baselen': len(name), 'metalen': len(CC+C0), 'name': color_string((CC, name))}
+            return {
+                "baselen": len(name),
+                "metalen": len(CC + C0),
+                "name": color_string((CC, name)),
+            }
         except UnexpectedResponseError:
-            return {'baselen': 0, 'metalen': 0, 'name': ''}
+            return {"baselen": 0, "metalen": 0, "name": ""}
         except UnicodeDecodeError:
             name = "UTF8 Err"
-            return {'baselen': len(name), 'metalen': len(CC+C0), 'name': color_string((CC, name))}
+            return {
+                "baselen": len(name),
+                "metalen": len(CC + C0),
+                "name": color_string((CC, name)),
+            }
 
     def on_exec(self, args: argparse.Namespace):
         slotinfo = self.cmd.get_slot_info()
@@ -3746,46 +5078,63 @@ class HWSlotList(DeviceRequiredUnit):
         slotnames = []
         all_nicks = self.cmd.get_all_slot_nicks()
         for slot_data in all_nicks:
-            hfn = {'baselen': len(slot_data['hf']), 'metalen': len(CC+C0), 'name': color_string((CC, slot_data["hf"]))}
-            lfn = {'baselen': len(slot_data['lf']), 'metalen': len(CC+C0), 'name': color_string((CC, slot_data["lf"]))}
-            m = max(hfn['baselen'], lfn['baselen'])
+            hfn = {
+                "baselen": len(slot_data["hf"]),
+                "metalen": len(CC + C0),
+                "name": color_string((CC, slot_data["hf"])),
+            }
+            lfn = {
+                "baselen": len(slot_data["lf"]),
+                "metalen": len(CC + C0),
+                "name": color_string((CC, slot_data["lf"])),
+            }
+            m = max(hfn["baselen"], lfn["baselen"])
             maxnamelength = m if m > maxnamelength else maxnamelength
-            slotnames.append({'hf': hfn, 'lf': lfn})
+            slotnames.append({"hf": hfn, "lf": lfn})
 
         for slot in SlotNumber:
             fwslot = SlotNumber.to_fw(slot)
             status = f"({color_string((CG, 'active'))})" if slot == selected else ""
-            hf_tag_type = TagSpecificType(slotinfo[fwslot]['hf'])
-            lf_tag_type = TagSpecificType(slotinfo[fwslot]['lf'])
-            print(f' - {f"Slot {slot}:":{4+maxnamelength+1}} {status}')
+            hf_tag_type = TagSpecificType(slotinfo[fwslot]["hf"])
+            lf_tag_type = TagSpecificType(slotinfo[fwslot]["lf"])
+            print(f" - {f'Slot {slot}:':{4 + maxnamelength + 1}} {status}")
 
             # HF
-            field_length = maxnamelength+slotnames[fwslot]["hf"]["metalen"]+1
-            status = f"({color_string((CR, 'disabled'))})" if not enabled[fwslot]["hf"] else ""
-            print(f'   HF: '
-                  f'{slotnames[fwslot]["hf"]["name"]:{field_length}}', end='')
-            print(status, end='')
+            field_length = maxnamelength + slotnames[fwslot]["hf"]["metalen"] + 1
+            status = (
+                f"({color_string((CR, 'disabled'))})"
+                if not enabled[fwslot]["hf"]
+                else ""
+            )
+            print(f"   HF: {slotnames[fwslot]['hf']['name']:{field_length}}", end="")
+            print(status, end="")
             if hf_tag_type != TagSpecificType.UNDEFINED:
-                color = CY if enabled[fwslot]['hf'] else C0
+                color = CY if enabled[fwslot]["hf"] else C0
                 print(color_string((color, hf_tag_type)))
             else:
                 print("undef")
-            if (not args.short) and enabled[fwslot]['hf'] and hf_tag_type != TagSpecificType.UNDEFINED:
+            if (
+                (not args.short)
+                and enabled[fwslot]["hf"]
+                and hf_tag_type != TagSpecificType.UNDEFINED
+            ):
                 if current != slot:
                     self.cmd.set_active_slot(slot)
                     current = slot
                 anti_coll_data = self.cmd.hf14a_get_anti_coll_data()
-                uid = anti_coll_data['uid']
-                atqa = anti_coll_data['atqa']
-                sak = anti_coll_data['sak']
-                ats = anti_coll_data['ats']
+                uid = anti_coll_data["uid"]
+                atqa = anti_coll_data["atqa"]
+                sak = anti_coll_data["sak"]
+                ats = anti_coll_data["ats"]
                 # print('    - ISO14443A emulator settings:')
                 atqa_hex_le = f"(0x{int.from_bytes(atqa, byteorder='little'):04x})"
-                print(f'      {"UID:":40}{color_string((CY, uid.hex().upper()))}')
-                print(f'      {"ATQA:":40}{color_string((CY, f"{atqa.hex().upper()} {atqa_hex_le}"))}')
-                print(f'      {"SAK:":40}{color_string((CY, sak.hex().upper()))}')
+                print(f"      {'UID:':40}{color_string((CY, uid.hex().upper()))}")
+                print(
+                    f"      {'ATQA:':40}{color_string((CY, f'{atqa.hex().upper()} {atqa_hex_le}'))}"
+                )
+                print(f"      {'SAK:':40}{color_string((CY, sak.hex().upper()))}")
                 if len(ats) > 0:
-                    print(f'      {"ATS:":40}{color_string((CY, ats.hex().upper()))}')
+                    print(f"      {'ATS:':40}{color_string((CY, ats.hex().upper()))}")
                 if hf_tag_type in [
                     TagSpecificType.MIFARE_Mini,
                     TagSpecificType.MIFARE_1024,
@@ -3797,45 +5146,62 @@ class HWSlotList(DeviceRequiredUnit):
                     enabled_str = color_string((CG, "enabled"))
                     disabled_str = color_string((CR, "disabled"))
                     print(
-                        f'      {"Gen1A magic mode:":40}'
-                        f'{enabled_str if config["gen1a_mode"] else disabled_str}')
+                        f"      {'Gen1A magic mode:':40}"
+                        f"{enabled_str if config['gen1a_mode'] else disabled_str}"
+                    )
                     print(
-                        f'      {"Gen2 magic mode:":40}'
-                        f'{enabled_str if config["gen2_mode"] else disabled_str}')
+                        f"      {'Gen2 magic mode:':40}"
+                        f"{enabled_str if config['gen2_mode'] else disabled_str}"
+                    )
                     print(
-                        f'      {"Use anti-collision data from block 0:":40}'
-                        f'{enabled_str if config["block_anti_coll_mode"] else disabled_str}')
+                        f"      {'Use anti-collision data from block 0:':40}"
+                        f"{enabled_str if config['block_anti_coll_mode'] else disabled_str}"
+                    )
                     try:
-                        print(f'      {"Write mode:":40}'
-                              f'{color_string((CY, MifareClassicWriteMode(config["write_mode"])))}')
+                        print(
+                            f"      {'Write mode:':40}"
+                            f"{color_string((CY, MifareClassicWriteMode(config['write_mode'])))}"
+                        )
                     except ValueError:
-                        print(f'      {"Write mode:":40}{color_string((CR, "invalid value!"))}')
+                        print(
+                            f"      {'Write mode:':40}{color_string((CR, 'invalid value!'))}"
+                        )
                     print(
-                        f'      {"Log (mfkey32) mode:":40}'
-                        f'{enabled_str if config["detection"] else disabled_str}')
+                        f"      {'Log (mfkey32) mode:':40}"
+                        f"{enabled_str if config['detection'] else disabled_str}"
+                    )
 
             # LF
-            field_length = maxnamelength+slotnames[fwslot]["lf"]["metalen"]+1
-            status = f"({color_string((CR, 'disabled'))})" if not enabled[fwslot]["lf"] else ""
-            print(f'   LF: '
-                  f'{slotnames[fwslot]["lf"]["name"]:{field_length}}', end='')
-            print(status, end='')
+            field_length = maxnamelength + slotnames[fwslot]["lf"]["metalen"] + 1
+            status = (
+                f"({color_string((CR, 'disabled'))})"
+                if not enabled[fwslot]["lf"]
+                else ""
+            )
+            print(f"   LF: {slotnames[fwslot]['lf']['name']:{field_length}}", end="")
+            print(status, end="")
             if lf_tag_type != TagSpecificType.UNDEFINED:
-                color = CY if enabled[fwslot]['lf'] else C0
+                color = CY if enabled[fwslot]["lf"] else C0
                 print(color_string((color, lf_tag_type)))
             else:
                 print("undef")
-            if (not args.short) and enabled[fwslot]['lf'] and lf_tag_type != TagSpecificType.UNDEFINED:
+            if (
+                (not args.short)
+                and enabled[fwslot]["lf"]
+                and lf_tag_type != TagSpecificType.UNDEFINED
+            ):
                 if current != slot:
                     self.cmd.set_active_slot(slot)
                     current = slot
                 if lf_tag_type == TagSpecificType.EM410X:
                     id = self.cmd.em410x_get_emu_id()
-                    print(f'      {"ID:":40}{color_string((CY, id.hex().upper()))}')
+                    print(f"      {'ID:':40}{color_string((CY, id.hex().upper()))}")
                 if lf_tag_type == TagSpecificType.HIDProx:
                     (format, fc, cn1, cn2, il, oem) = self.cmd.hidprox_get_emu_id()
                     cn = (cn1 << 32) + cn2
-                    print(f"      {'Format:':40}{color_string((CY, HIDFormat(format)))}")
+                    print(
+                        f"      {'Format:':40}{color_string((CY, HIDFormat(format)))}"
+                    )
                     if fc > 0:
                         print(f" FC: {color_string((CG, fc))}")
                     if il > 0:
@@ -3850,11 +5216,11 @@ class HWSlotList(DeviceRequiredUnit):
             self.cmd.set_active_slot(selected)
 
 
-@hw_slot.command('change')
+@hw_slot.command("change")
 class HWSlotSet(SlotIndexArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Set emulation tag slot activated'
+        parser.description = "Set emulation tag slot activated"
         return self.add_slot_args(parser, mandatory=True)
 
     def on_exec(self, args: argparse.Namespace):
@@ -3863,11 +5229,11 @@ class HWSlotSet(SlotIndexArgsUnit):
         print(f" - Set slot {slot_index} activated success.")
 
 
-@hw_slot.command('type')
+@hw_slot.command("type")
 class HWSlotType(TagTypeArgsUnit, SlotIndexArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Set emulation tag type'
+        parser.description = "Set emulation tag type"
         self.add_slot_args(parser)
         self.add_type_args(parser)
         return parser
@@ -3879,14 +5245,14 @@ class HWSlotType(TagTypeArgsUnit, SlotIndexArgsUnit):
         else:
             slot_num = SlotNumber.from_fw(self.cmd.get_active_slot())
         self.cmd.set_slot_tag_type(slot_num, tag_type)
-        print(f' - Set slot {slot_num} tag type success.')
+        print(f" - Set slot {slot_num} tag type success.")
 
 
-@hw_slot.command('delete')
+@hw_slot.command("delete")
 class HWDeleteSlotSense(SlotIndexArgsUnit, SenseTypeArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Delete sense type data for a specific slot'
+        parser.description = "Delete sense type data for a specific slot"
         self.add_slot_args(parser)
         self.add_sense_type_args(parser)
         return parser
@@ -3901,14 +5267,14 @@ class HWDeleteSlotSense(SlotIndexArgsUnit, SenseTypeArgsUnit):
         else:
             sense_type = TagSenseType.HF
         self.cmd.delete_slot_sense_type(slot_num, sense_type)
-        print(f' - Delete slot {slot_num} {sense_type.name} tag type success.')
+        print(f" - Delete slot {slot_num} {sense_type.name} tag type success.")
 
 
-@hw_slot.command('init')
+@hw_slot.command("init")
 class HWSlotInit(TagTypeArgsUnit, SlotIndexArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Set emulation tag data to default'
+        parser.description = "Set emulation tag data to default"
         self.add_slot_args(parser)
         self.add_type_args(parser)
         return parser
@@ -3920,14 +5286,14 @@ class HWSlotInit(TagTypeArgsUnit, SlotIndexArgsUnit):
         else:
             slot_num = SlotNumber.from_fw(self.cmd.get_active_slot())
         self.cmd.set_slot_data_default(slot_num, tag_type)
-        print(' - Set slot tag data init success.')
+        print(" - Set slot tag data init success.")
 
 
-@hw_slot.command('enable')
+@hw_slot.command("enable")
 class HWSlotEnable(SlotIndexArgsUnit, SenseTypeArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Enable tag slot'
+        parser.description = "Enable tag slot"
         self.add_slot_args(parser)
         self.add_sense_type_args(parser)
         return parser
@@ -3942,14 +5308,14 @@ class HWSlotEnable(SlotIndexArgsUnit, SenseTypeArgsUnit):
         else:
             sense_type = TagSenseType.HF
         self.cmd.set_slot_enable(slot_num, sense_type, True)
-        print(f' - Enable slot {slot_num} {sense_type.name} success.')
+        print(f" - Enable slot {slot_num} {sense_type.name} success.")
 
 
-@hw_slot.command('disable')
+@hw_slot.command("disable")
 class HWSlotDisable(SlotIndexArgsUnit, SenseTypeArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Disable tag slot'
+        parser.description = "Disable tag slot"
         self.add_slot_args(parser)
         self.add_sense_type_args(parser)
         return parser
@@ -3961,14 +5327,14 @@ class HWSlotDisable(SlotIndexArgsUnit, SenseTypeArgsUnit):
         else:
             sense_type = TagSenseType.HF
         self.cmd.set_slot_enable(slot_num, sense_type, False)
-        print(f' - Disable slot {slot_num} {sense_type.name} success.')
+        print(f" - Disable slot {slot_num} {sense_type.name} success.")
 
 
-@lf_em_410x.command('econfig')
+@lf_em_410x.command("econfig")
 class LFEM410xEconfig(SlotIndexArgsAndGoUnit, LFEMIdArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Set emulated em410x card id'
+        parser.description = "Set emulated em410x card id"
         self.add_slot_args(parser)
         self.add_card_arg(parser)
         return parser
@@ -3976,17 +5342,18 @@ class LFEM410xEconfig(SlotIndexArgsAndGoUnit, LFEMIdArgsUnit):
     def on_exec(self, args: argparse.Namespace):
         if args.id is not None:
             self.cmd.em410x_set_emu_id(bytes.fromhex(args.id))
-            print(' - Set em410x tag id success.')
+            print(" - Set em410x tag id success.")
         else:
             response = self.cmd.em410x_get_emu_id()
-            print(' - Get em410x tag id success.')
-            print(f'ID: {response.hex()}')
+            print(" - Get em410x tag id success.")
+            print(f"ID: {response.hex()}")
 
-@lf_viking.command('econfig')
+
+@lf_viking.command("econfig")
 class LFVikingEconfig(SlotIndexArgsAndGoUnit, LFVikingIdArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Set emulated Viking card id'
+        parser.description = "Set emulated Viking card id"
         self.add_slot_args(parser)
         self.add_card_arg(parser)
         return parser
@@ -3995,26 +5362,31 @@ class LFVikingEconfig(SlotIndexArgsAndGoUnit, LFVikingIdArgsUnit):
         if args.id is not None:
             slotinfo = self.cmd.get_slot_info()
             selected = SlotNumber.from_fw(self.cmd.get_active_slot())
-            lf_tag_type = TagSpecificType(slotinfo[selected - 1]['lf'])
+            lf_tag_type = TagSpecificType(slotinfo[selected - 1]["lf"])
             if lf_tag_type != TagSpecificType.Viking:
                 print(f"{color_string((CR, 'WARNING'))}: Slot type not set to Viking.")
             self.cmd.viking_set_emu_id(bytes.fromhex(args.id))
-            print(' - Set Viking tag id success.')
+            print(" - Set Viking tag id success.")
         else:
             response = self.cmd.viking_get_emu_id()
-            print(' - Get Viking tag id success.')
-            print(f'ID: {response.hex().upper()}')
+            print(" - Get Viking tag id success.")
+            print(f"ID: {response.hex().upper()}")
 
-@hw_slot.command('nick')
+
+@hw_slot.command("nick")
 class HWSlotNick(SlotIndexArgsUnit, SenseTypeArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Get/Set/Delete tag nick name for slot'
+        parser.description = "Get/Set/Delete tag nick name for slot"
         self.add_slot_args(parser)
         self.add_sense_type_args(parser)
         action_group = parser.add_mutually_exclusive_group()
-        action_group.add_argument('-n', '--name', type=str, required=False, help="Set tag nick name for slot")
-        action_group.add_argument('-d', '--delete', action='store_true', help="Delete tag nick name for slot")
+        action_group.add_argument(
+            "-n", "--name", type=str, required=False, help="Set tag nick name for slot"
+        )
+        action_group.add_argument(
+            "-d", "--delete", action="store_true", help="Delete tag nick name for slot"
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -4029,33 +5401,32 @@ class HWSlotNick(SlotIndexArgsUnit, SenseTypeArgsUnit):
         if args.name is not None:
             name: str = args.name
             self.cmd.set_slot_tag_nick(slot_num, sense_type, name)
-            print(f' - Set tag nick name for slot {slot_num} {sense_type.name}: {name}')
+            print(f" - Set tag nick name for slot {slot_num} {sense_type.name}: {name}")
         elif args.delete:
             self.cmd.delete_slot_tag_nick(slot_num, sense_type)
-            print(f' - Delete tag nick name for slot {slot_num} {sense_type.name}')
+            print(f" - Delete tag nick name for slot {slot_num} {sense_type.name}")
         else:
             res = self.cmd.get_slot_tag_nick(slot_num, sense_type)
-            print(f' - Get tag nick name for slot {slot_num} {sense_type.name}'
-                  f': {res}')
+            print(f" - Get tag nick name for slot {slot_num} {sense_type.name}: {res}")
 
 
-@hw_slot.command('store')
+@hw_slot.command("store")
 class HWSlotUpdate(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Store slots config & data to device flash'
+        parser.description = "Store slots config & data to device flash"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         self.cmd.slot_data_config_save()
-        print(' - Store slots config and data from device memory to flash success.')
+        print(" - Store slots config and data from device memory to flash success.")
 
 
-@hw_slot.command('openall')
+@hw_slot.command("openall")
 class HWSlotOpenAll(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Open all slot and set to default data'
+        parser.description = "Open all slot and set to default data"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -4065,7 +5436,7 @@ class HWSlotOpenAll(DeviceRequiredUnit):
 
         # set all slot
         for slot in SlotNumber:
-            print(f' Slot {slot} setting...')
+            print(f" Slot {slot} setting...")
             # first to set tag type
             self.cmd.set_slot_tag_type(slot, hf_type)
             self.cmd.set_slot_tag_type(slot, lf_type)
@@ -4075,18 +5446,18 @@ class HWSlotOpenAll(DeviceRequiredUnit):
             # finally, we can enable this slot.
             self.cmd.set_slot_enable(slot, TagSenseType.HF, True)
             self.cmd.set_slot_enable(slot, TagSenseType.LF, True)
-            print(f' Slot {slot} setting done.')
+            print(f" Slot {slot} setting done.")
 
         # update config and save to flash
         self.cmd.slot_data_config_save()
-        print(' - Succeeded opening all slots and setting data to default.')
+        print(" - Succeeded opening all slots and setting data to default.")
 
 
-@hw.command('dfu')
+@hw.command("dfu")
 class HWDFU(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Restart application to bootloader/DFU mode'
+        parser.description = "Restart application to bootloader/DFU mode"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -4102,15 +5473,22 @@ class HWDFU(DeviceRequiredUnit):
         time.sleep(0.1)
 
 
-@hw_settings.command('animation')
+@hw_settings.command("animation")
 class HWSettingsAnimation(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Get or change current animation mode value'
+        parser.description = "Get or change current animation mode value"
         mode_names = [m.name for m in list(AnimationMode)]
         help_str = "Mode: " + ", ".join(mode_names)
-        parser.add_argument('-m', '--mode', type=str, required=False,
-                            help=help_str, metavar="MODE", choices=mode_names)
+        parser.add_argument(
+            "-m",
+            "--mode",
+            type=str,
+            required=False,
+            help=help_str,
+            metavar="MODE",
+            choices=mode_names,
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -4123,28 +5501,31 @@ class HWSettingsAnimation(DeviceRequiredUnit):
             print(AnimationMode(self.cmd.get_animation_mode()))
 
 
-@hw_settings.command('bleclearbonds')
+@hw_settings.command("bleclearbonds")
 class HWSettingsBleClearBonds(DeviceRequiredUnit):
-
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Clear all BLE bindings. Warning: effect is immediate!'
-        parser.add_argument("--force", default=False, action="store_true", help="Just to be sure")
+        parser.description = "Clear all BLE bindings. Warning: effect is immediate!"
+        parser.add_argument(
+            "--force", default=False, action="store_true", help="Just to be sure"
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         if not args.force:
-            print("If you are you really sure, read the command documentation to see how to proceed.")
+            print(
+                "If you are you really sure, read the command documentation to see how to proceed."
+            )
             return
         self.cmd.delete_all_ble_bonds()
         print(" - Successfully clear all bonds")
 
 
-@hw_settings.command('store')
+@hw_settings.command("store")
 class HWSettingsStore(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Store current settings to flash'
+        parser.description = "Store current settings to flash"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -4155,17 +5536,21 @@ class HWSettingsStore(DeviceRequiredUnit):
             print(" - Store failed")
 
 
-@hw_settings.command('reset')
+@hw_settings.command("reset")
 class HWSettingsReset(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Reset settings to default values'
-        parser.add_argument("--force", default=False, action="store_true", help="Just to be sure")
+        parser.description = "Reset settings to default values"
+        parser.add_argument(
+            "--force", default=False, action="store_true", help="Just to be sure"
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         if not args.force:
-            print("If you are you really sure, read the command documentation to see how to proceed.")
+            print(
+                "If you are you really sure, read the command documentation to see how to proceed."
+            )
             return
         print("Initializing settings...")
         if self.cmd.reset_settings():
@@ -4174,17 +5559,23 @@ class HWSettingsReset(DeviceRequiredUnit):
             print(" - Reset failed")
 
 
-@hw.command('factory_reset')
+@hw.command("factory_reset")
 class HWFactoryReset(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Wipe all slot data and custom settings and return to factory settings'
-        parser.add_argument("--force", default=False, action="store_true", help="Just to be sure")
+        parser.description = (
+            "Wipe all slot data and custom settings and return to factory settings"
+        )
+        parser.add_argument(
+            "--force", default=False, action="store_true", help="Just to be sure"
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         if not args.force:
-            print("If you are you really sure, read the command documentation to see how to proceed.")
+            print(
+                "If you are you really sure, read the command documentation to see how to proceed."
+            )
             return
         if self.cmd.wipe_fds():
             print(" - Reset successful! Please reconnect.")
@@ -4194,14 +5585,14 @@ class HWFactoryReset(DeviceRequiredUnit):
             print(" - Reset failed!")
 
 
-@hw.command('battery')
+@hw.command("battery")
 class HWBatteryInfo(DeviceRequiredUnit):
     # How much remaining battery is considered low?
     BATTERY_LOW_LEVEL = 30
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Get battery information, voltage and level'
+        parser.description = "Get battery information, voltage and level"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -4213,30 +5604,44 @@ class HWBatteryInfo(DeviceRequiredUnit):
             print(color_string((CR, "[!] Low battery, please charge.")))
 
 
-@hw_settings.command('btnpress')
+@hw_settings.command("btnpress")
 class HWButtonSettingsGet(DeviceRequiredUnit):
-
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Get or set button press function of Button A and Button B'
+        parser.description = "Get or set button press function of Button A and Button B"
         button_group = parser.add_mutually_exclusive_group()
-        button_group.add_argument('-a', '-A', action='store_true', help="Button A")
-        button_group.add_argument('-b', '-B', action='store_true', help="Button B")
+        button_group.add_argument("-a", "-A", action="store_true", help="Button A")
+        button_group.add_argument("-b", "-B", action="store_true", help="Button B")
         duration_group = parser.add_mutually_exclusive_group()
-        duration_group.add_argument('-s', '--short', action='store_true', help="Short-press (default)")
-        duration_group.add_argument('-l', '--long', action='store_true', help="Long-press")
+        duration_group.add_argument(
+            "-s", "--short", action="store_true", help="Short-press (default)"
+        )
+        duration_group.add_argument(
+            "-l", "--long", action="store_true", help="Long-press"
+        )
         function_names = [f.name for f in list(ButtonPressFunction)]
         function_descs = [f"{f.name} ({f})" for f in list(ButtonPressFunction)]
         help_str = "Function: " + ", ".join(function_descs)
-        parser.add_argument('-f', '--function', type=str, required=False,
-                            help=help_str, metavar="FUNCTION", choices=function_names)
+        parser.add_argument(
+            "-f",
+            "--function",
+            type=str,
+            required=False,
+            help=help_str,
+            metavar="FUNCTION",
+            choices=function_names,
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         if args.function is not None:
             function = ButtonPressFunction[args.function]
             if not args.a and not args.b:
-                print(color_string((CR, "You must specify which button you want to change")))
+                print(
+                    color_string(
+                        (CR, "You must specify which button you want to change")
+                    )
+                )
                 return
             if args.a:
                 button = ButtonType.A
@@ -4246,8 +5651,10 @@ class HWButtonSettingsGet(DeviceRequiredUnit):
                 self.cmd.set_long_button_press_config(button, function)
             else:
                 self.cmd.set_button_press_config(button, function)
-            print(f" - Successfully set function '{function}'"
-                  f" to Button {button.name} {'long-press' if args.long else 'short-press'}")
+            print(
+                f" - Successfully set function '{function}'"
+                f" to Button {button.name} {'long-press' if args.long else 'short-press'}"
+            )
             print(color_string((CY, "Do not forget to store your settings in flash!")))
         else:
             if args.a:
@@ -4264,17 +5671,20 @@ class HWButtonSettingsGet(DeviceRequiredUnit):
                 if not args.short:
                     resp_long = self.cmd.get_long_button_press_config(button)
                     button_long_fn = ButtonPressFunction(resp_long)
-                    print(f"{color_string((CG, f'{button.name} long'))}: {button_long_fn}")
+                    print(
+                        f"{color_string((CG, f'{button.name} long'))}: {button_long_fn}"
+                    )
                 print("")
 
 
-@hw_settings.command('blekey')
+@hw_settings.command("blekey")
 class HWSettingsBLEKey(DeviceRequiredUnit):
-
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Get or set the ble connect key'
-        parser.add_argument('-k', '--key', required=False, help="Ble connect key for your device")
+        parser.description = "Get or set the ble connect key"
+        parser.add_argument(
+            "-k", "--key", required=False, help="Ble connect key for your device"
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -4283,25 +5693,36 @@ class HWSettingsBLEKey(DeviceRequiredUnit):
 
         if args.key is not None:
             if len(args.key) != 6:
-                print(f" - {color_string((CR, 'The ble connect key length must be 6'))}")
+                print(
+                    f" - {color_string((CR, 'The ble connect key length must be 6'))}"
+                )
                 return
-            if re.match(r'[0-9]{6}', args.key):
+            if re.match(r"[0-9]{6}", args.key):
                 self.cmd.set_ble_connect_key(args.key)
-                print(f" - Successfully set ble connect key to : {color_string((CG, args.key))}")
-                print(color_string((CY, "Do not forget to store your settings in flash!")))
+                print(
+                    f" - Successfully set ble connect key to : {color_string((CG, args.key))}"
+                )
+                print(
+                    color_string((CY, "Do not forget to store your settings in flash!"))
+                )
             else:
-                print(f" - {color_string((CR, 'Only 6 ASCII characters from 0 to 9 are supported.'))}")
+                print(
+                    f" - {color_string((CR, 'Only 6 ASCII characters from 0 to 9 are supported.'))}"
+                )
 
 
-@hw_settings.command('blepair')
+@hw_settings.command("blepair")
 class HWBlePair(DeviceRequiredUnit):
-
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Show or configure BLE pairing'
+        parser.description = "Show or configure BLE pairing"
         set_group = parser.add_mutually_exclusive_group()
-        set_group.add_argument('-e', '--enable', action='store_true', help="Enable BLE pairing")
-        set_group.add_argument('-d', '--disable', action='store_true', help="Disable BLE pairing")
+        set_group.add_argument(
+            "-e", "--enable", action="store_true", help="Enable BLE pairing"
+        )
+        set_group.add_argument(
+            "-d", "--disable", action="store_true", help="Disable BLE pairing"
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -4330,19 +5751,40 @@ class HWBlePair(DeviceRequiredUnit):
             print(color_string((CY, "Do not forget to store your settings in flash!")))
 
 
-@hw.command('raw')
+@hw.command("raw")
 class HWRaw(DeviceRequiredUnit):
-
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Send raw command'
+        parser.description = "Send raw command"
         cmd_names = sorted([c.name for c in list(Command)])
         help_str = "Command: " + ", ".join(cmd_names)
         command_group = parser.add_mutually_exclusive_group(required=True)
-        command_group.add_argument('-c', '--command', type=str, metavar="COMMAND", help=help_str, choices=cmd_names)
-        command_group.add_argument('-n', '--num_command', type=int, metavar="<dec>", help="Numeric command ID: <dec>")
-        parser.add_argument('-d', '--data', type=str, help="Data to send", default="", metavar="<hex>")
-        parser.add_argument('-t', '--timeout', type=int, help="Timeout in seconds", default=3, metavar="<dec>")
+        command_group.add_argument(
+            "-c",
+            "--command",
+            type=str,
+            metavar="COMMAND",
+            help=help_str,
+            choices=cmd_names,
+        )
+        command_group.add_argument(
+            "-n",
+            "--num_command",
+            type=int,
+            metavar="<dec>",
+            help="Numeric command ID: <dec>",
+        )
+        parser.add_argument(
+            "-d", "--data", type=str, help="Data to send", default="", metavar="<hex>"
+        )
+        parser.add_argument(
+            "-t",
+            "--timeout",
+            type=int,
+            help="Timeout in seconds",
+            default=3,
+            metavar="<dec>",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -4352,7 +5794,8 @@ class HWRaw(DeviceRequiredUnit):
             # We accept not-yet-known command ids as "hw raw" is meant for debugging
             command = args.num_command
         response = self.cmd.device.send_cmd_sync(
-            command, data=bytes.fromhex(args.data), status=0x0, timeout=args.timeout)
+            command, data=bytes.fromhex(args.data), status=0x0, timeout=args.timeout
+        )
         print(" - Received:")
         try:
             command = Command(response.cmd)
@@ -4371,32 +5814,77 @@ class HWRaw(DeviceRequiredUnit):
         print(f"   Data (HEX): {response.data.hex()}")
 
 
-@hf_14a.command('raw')
+@hf_14a.command("raw")
 class HF14ARaw(ReaderRequiredUnit):
-
     def bool_to_bit(self, value):
         return 1 if value else 0
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
         parser.formatter_class = argparse.RawDescriptionHelpFormatter
-        parser.description = 'Send raw command'
-        parser.add_argument('-a', '--activate-rf', help="Active signal field ON without select",
-                            action='store_true', default=False,)
-        parser.add_argument('-s', '--select-tag', help="Active signal field ON with select",
-                            action='store_true', default=False,)
+        parser.description = "Send raw command"
+        parser.add_argument(
+            "-a",
+            "--activate-rf",
+            help="Active signal field ON without select",
+            action="store_true",
+            default=False,
+        )
+        parser.add_argument(
+            "-s",
+            "--select-tag",
+            help="Active signal field ON with select",
+            action="store_true",
+            default=False,
+        )
         # TODO: parser.add_argument('-3', '--type3-select-tag',
         #           help="Active signal field ON with ISO14443-3 select (no RATS)", action='store_true', default=False,)
-        parser.add_argument('-d', '--data', type=str, metavar="<hex>", help="Data to be sent")
-        parser.add_argument('-b', '--bits', type=int, metavar="<dec>",
-                            help="Number of bits to send. Useful for send partial byte")
-        parser.add_argument('-c', '--crc', help="Calculate and append CRC", action='store_true', default=False,)
-        parser.add_argument('-r', '--no-response', help="Do not read response", action='store_true', default=False,)
-        parser.add_argument('-cc', '--crc-clear', help="Verify and clear CRC of received data",
-                            action='store_true', default=False,)
-        parser.add_argument('-k', '--keep-rf', help="Keep signal field ON after receive",
-                            action='store_true', default=False,)
-        parser.add_argument('-t', '--timeout', type=int, metavar="<dec>", help="Timeout in ms", default=100)
+        parser.add_argument(
+            "-d", "--data", type=str, metavar="<hex>", help="Data to be sent"
+        )
+        parser.add_argument(
+            "-b",
+            "--bits",
+            type=int,
+            metavar="<dec>",
+            help="Number of bits to send. Useful for send partial byte",
+        )
+        parser.add_argument(
+            "-c",
+            "--crc",
+            help="Calculate and append CRC",
+            action="store_true",
+            default=False,
+        )
+        parser.add_argument(
+            "-r",
+            "--no-response",
+            help="Do not read response",
+            action="store_true",
+            default=False,
+        )
+        parser.add_argument(
+            "-cc",
+            "--crc-clear",
+            help="Verify and clear CRC of received data",
+            action="store_true",
+            default=False,
+        )
+        parser.add_argument(
+            "-k",
+            "--keep-rf",
+            help="Keep signal field ON after receive",
+            action="store_true",
+            default=False,
+        )
+        parser.add_argument(
+            "-t",
+            "--timeout",
+            type=int,
+            metavar="<dec>",
+            help="Timeout in ms",
+            default=100,
+        )
         parser.epilog = """
 examples/notes:
   hf 14a raw -b 7 -d 40 -k
@@ -4408,20 +5896,22 @@ examples/notes:
 
     def on_exec(self, args: argparse.Namespace):
         options = {
-            'activate_rf_field': self.bool_to_bit(args.activate_rf),
-            'wait_response': self.bool_to_bit(not args.no_response),
-            'append_crc': self.bool_to_bit(args.crc),
-            'auto_select': self.bool_to_bit(args.select_tag),
-            'keep_rf_field': self.bool_to_bit(args.keep_rf),
-            'check_response_crc': self.bool_to_bit(args.crc_clear),
+            "activate_rf_field": self.bool_to_bit(args.activate_rf),
+            "wait_response": self.bool_to_bit(not args.no_response),
+            "append_crc": self.bool_to_bit(args.crc),
+            "auto_select": self.bool_to_bit(args.select_tag),
+            "keep_rf_field": self.bool_to_bit(args.keep_rf),
+            "check_response_crc": self.bool_to_bit(args.crc_clear),
             # 'auto_type3_select': self.bool_to_bit(args.type3-select-tag),
         }
         data: str = args.data
         if data is not None:
-            data = data.replace(' ', '')
-            if re.match(r'^[0-9a-fA-F]+$', data):
+            data = data.replace(" ", "")
+            if re.match(r"^[0-9a-fA-F]+$", data):
                 if len(data) % 2 != 0:
-                    print(f" [!] {color_string((CR, 'The length of the data must be an integer multiple of 2.'))}")
+                    print(
+                        f" [!] {color_string((CR, 'The length of the data must be an integer multiple of 2.'))}"
+                    )
                     return
                 else:
                     data_bytes = bytes.fromhex(data)
@@ -4431,7 +5921,9 @@ examples/notes:
         else:
             data_bytes = []
         if args.bits is not None and args.crc:
-            print(f" [!] {color_string((CR, '--bits and --crc are mutually exclusive'))}")
+            print(
+                f" [!] {color_string((CR, '--bits and --crc are mutually exclusive'))}"
+            )
             return
 
         # Exec 14a raw cmd.
@@ -4439,9 +5931,10 @@ examples/notes:
         if len(resp) > 0:
             print(
                 # print head
-                " - " +
+                " - "
+                +
                 # print data
-                ' '.join([hex(byte).replace('0x', '').rjust(2, '0') for byte in resp])
+                " ".join([hex(byte).replace("0x", "").rjust(2, "0") for byte in resp])
             )
         else:
             print(f" [*] {color_string((CY, 'No response'))}")
