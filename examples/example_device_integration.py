@@ -12,7 +12,6 @@ Usage:
 """
 
 import sys
-import time
 from typing import Optional
 
 # For standalone package
@@ -28,7 +27,6 @@ except ImportError:
     # For main repository
     sys.path.insert(0, 'software/script')
     from device_interface import DeviceInterface, AuthResult, KeyType
-    from chameleon_cli_unit import HFMFFuzzer
 
 
 def example_basic_fuzzing():
@@ -39,7 +37,7 @@ def example_basic_fuzzing():
     
     fuzzer = RFIDFuzzer(iterations=50)
     
-    stats = fuzzer.fuzz(
+    fuzzer.fuzz(
         original_key="FFFFFFFFFFFF",
         strategy=MutationStrategy.BIT,
         iterations=50,
@@ -69,7 +67,7 @@ def example_device_detection(port: Optional[str] = None):
         # Get device info
         if device.device_info:
             info = device.device_info
-            print(f"\nDevice Information:")
+            print("\nDevice Information:")
             print(f"  Name: {info.name}")
             print(f"  Hardware: {info.hw_version}")
             print(f"  Firmware: {info.fw_version}")

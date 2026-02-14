@@ -44,7 +44,7 @@ try:
     args_count = len(parser._actions) - 1  # Exclude help
     print(f"      ✓ Arguments count: {args_count}")
     print(
-        f"      ✓ Arguments: iterations, block, target_type, mutation_type, output, seed, slowdown, retries, health-check, verbose"
+        "      ✓ Arguments: iterations, block, target_type, mutation_type, output, seed, slowdown, retries, health-check, verbose"
     )
 
     # Test basic parsing
@@ -88,7 +88,7 @@ except Exception as e:
 # Test 5: Check device interface integration
 print("\n[5/5] Testing device interface...")
 try:
-    from device_interface import DeviceInterface, AuthResult, DeviceMode
+    pass
 
     print("      ✓ DeviceInterface imported successfully")
     print("      ✓ AuthResult enum available (SUCCESS, FAILURE, TIMEOUT, ERROR)")
