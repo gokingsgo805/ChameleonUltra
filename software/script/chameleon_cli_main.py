@@ -10,7 +10,7 @@ import pathlib
 import prompt_toolkit
 from prompt_toolkit.formatted_text import ANSI
 from prompt_toolkit.history import FileHistory
-from chameleon_utils import CR, CG, CY, color_string
+from chameleon_utils import CR, CG, CY, CB, CC, CM, C0, color_string
 
 ULTRA = r"""
                                                                 ╦ ╦╦ ╔╦╗╦═╗╔═╗
@@ -90,6 +90,24 @@ class ChameleonCLI:
         :return:
         """
         print(color_string((CG, BANNER)))
+
+    @staticmethod
+    def print_card_info():
+        """
+        Print detected card information
+        """
+        print(f"{CB}╔═══════════════════════════════════════════════════╗{C0}")
+        print(f"{CB}║{C0}         {CG}CARD DETECTED: EM4100{C0}          {CB}║{C0}")
+        print(f"{CB}╠═══════════════════════════════════════════════════╣{C0}")
+        print(f"{CB}║{C0} Type:        {CG}EM4100 RFID Tag{C0}              {CB}║{C0}")
+        print(f"{CB}║{C0} Frequency:   {CY}125 kHz (LF){C0}                {CB}║{C0}")
+        print(f"{CB}║{C0} Common Use:  {CC}Access cards, badges{C0}         {CB}║{C0}")
+        print(f"{CB}╠═══════════════════════════════════════════════════╣{C0}")
+        print(f"{CB}║{C0} {CG}Quick Commands:{C0}                         {CB}║{C0}")
+        print(f"{CB}║{C0}   • lf em 410x read    {CM}→{C0} Read card ID      {CB}║{C0}")
+        print(f"{CB}║{C0}   • lf em 410x clone   {CM}→{C0} Clone to device  {CB}║{C0}")
+        print(f"{CB}║{C0}   • lf em 410x sim     {CM}→{C0} Emulate card    {CB}║{C0}")
+        print(f"{CB}╚═══════════════════════════════════════════════════╝{C0}\n")
 
     def exec_cmd(self, cmd_str):
         if cmd_str == "":
@@ -177,6 +195,7 @@ class ChameleonCLI:
         )
 
         self.print_banner()
+        self.print_card_info()
         cmd_strs = []
         while True:
             if cmd_strs:
