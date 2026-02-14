@@ -3152,7 +3152,7 @@ class HFMFEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
 
 @hf_mf.command("fuzz")
 class HFMFFuzzer(ReaderRequiredUnit):
-    """RFID Fuzzer for MIFARE Classic - mutates and tests command sequences for robustness"""
+    """RFID Fuzzer for MIFARE Classic - mutates and tests commands with real device integration"""
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
@@ -3163,7 +3163,10 @@ class HFMFFuzzer(ReaderRequiredUnit):
         parser.add_argument("-m", "--mutation-type", type=str, choices=["bit", "byte", "xor", "random"], default="bit", help="Mutation type (default: bit)")
         parser.add_argument("-o", "--output", type=str, metavar="<file>", help="Output file for results")
         parser.add_argument("--seed", type=int, metavar="<dec>", help="Random seed for reproducibility")
-        parser.add_argument("--slowdown", type=float, default=0.01, metavar="<float>", help="Delay between iterations in seconds (default: 0.01)")
+        parser.add_argument("--slowdown", type=float, default=0.01, metavar="<float>", help="Delay between iterations (default: 0.01)")
+        parser.add_argument("--retries", type=int, default=1, metavar="<dec>", help="Retries on timeout (default: 1)")
+        parser.add_argument("--health-check", type=int, default=0, metavar="<dec>", help="Device health check every N iterations (0=disabled)")
+        parser.add_argument("--verbose", action="store_true", help="Verbose output with device details")
         return parser
 
     def fuzz_data(self, data: bytes, mutation_type: str, seed: int = None) -> bytes:
@@ -3193,6 +3196,10 @@ class HFMFFuzzer(ReaderRequiredUnit):
         import random
         import csv
         from datetime import datetime
+        
+        # Import device interface
+        from device_interface import DeviceInterface, AuthResult
+        
         start_time = datetime.now()
         results = []
         mutation_type = args.mutation_type
@@ -3200,66 +3207,121 @@ class HFMFFuzzer(ReaderRequiredUnit):
         target_type = MfcKeyType.B if args.target_type == "B" else MfcKeyType.A
         iterations = args.iterations
         seed = args.seed
+        
         if seed is not None:
             random.seed(seed)
-        print(f" - Starting MIFARE Fuzzer")
-        print(f"   Iterations: {iterations}")
-        print(f"   Mutation Type: {mutation_type}")
-        print(f"   Target Block: {block}")
-        print(f"   Target Type: {target_type.name}")
+        
+        # Initialize device interface
+        device_iface = DeviceInterface(self.cmd)
+        
+        print(color_string((CG, " ◆ Starting MIFARE Classic Fuzzer with Device Integration")))
+        print(color_string((CY, f"   • Iterations: {iterations}")))
+        print(color_string((CY, f"   • Mutation Type: {mutation_type}")))
+        print(color_string((CY, f"   • Target Block: {block}")))
+        print(color_string((CY, f"   • Key Type: {target_type.name}")))
         if seed is not None:
-            print(f"   Seed: {seed}")
-        print(f"   Slowdown: {args.slowdown}s")
-        print(f" - Generating test data...")
+            print(color_string((CY, f"   • Seed: {seed}")))
+        print(color_string((CY, f"   • Delay: {args.slowdown}s")))
+        print(color_string((CY, f"   • Retries: {args.retries}")))
+        
+        # Start device session
+        print(color_string((CB, " ◆ Initializing device...")))
+        if not device_iface.start_session():
+            print(color_string((CR, " ✗ Device initialization failed")))
+            return
+        
+        if args.verbose and device_iface.device_info:
+            dev = device_iface.device_info
+            print(color_string((CG, f" ✓ Device: {dev.name}")))
+            print(color_string((CG, f" ✓ Mode: {dev.mode.name}")))
+        
         test_keys = [bytes.fromhex("ffffffffffff"), bytes.fromhex("000000000000"), bytes.fromhex("a0a1a2a3a4a5")]
-        successful_auth = 0
-        failed_auth = 0
-        device_errors = 0
         interesting_behaviors = []
-        print(f" - Fuzzing in progress...")
-        for iteration in range(iterations):
-            try:
-                key = random.choice(test_keys)
-                mutated_key = self.fuzz_data(key, mutation_type, seed + iteration if seed else None)
+        failed_health_checks = 0
+        
+        print(color_string((CB, " ◆ Fuzzing in progress...")))
+        
+        try:
+            for iteration in range(iterations):
+                # Health check
+                if args.health_check > 0 and (iteration + 1) % args.health_check == 0:
+                    if not device_iface.validate_device_health():
+                        print(color_string((CY, f"   ⚠ Health check failed at iteration {iteration + 1}")))
+                        failed_health_checks += 1
+                        if not device_iface.recover_connection():
+                            print(color_string((CR, " ✗ Device recovery failed")))
+                            break
+                
                 try:
-                    result = self.cmd.mf1_auth_one_key_block(block, target_type, mutated_key)
-                    if result:
-                        successful_auth += 1
+                    key = random.choice(test_keys)
+                    mutated_key = self.fuzz_data(key, mutation_type, seed + iteration if seed else None)
+                    
+                    # Use device interface for authentication
+                    auth_result, error_msg = device_iface.test_authentication(
+                        block, target_type, mutated_key, 
+                        retry_count=args.retries
+                    )
+                    
+                    if auth_result == AuthResult.SUCCESS:
                         behavior = "AUTH_SUCCESS"
-                    else:
-                        failed_auth += 1
+                        interesting_behaviors.append((iteration, mutated_key.hex(), behavior))
+                    elif auth_result == AuthResult.FAILURE:
                         behavior = "AUTH_FAIL"
+                    elif auth_result == AuthResult.TIMEOUT:
+                        behavior = "TIMEOUT"
+                        interesting_behaviors.append((iteration, mutated_key.hex(), behavior))
+                    else:  # ERROR
+                        behavior = f"ERROR: {error_msg[:30]}" if error_msg else "ERROR"
+                        interesting_behaviors.append((iteration, mutated_key.hex(), behavior))
+                    
+                    results.append({
+                        "iteration": iteration,
+                        "mutated_key": mutated_key.hex().upper(),
+                        "original_key": key.hex().upper(),
+                        "behavior": behavior,
+                        "timestamp": datetime.now().isoformat()
+                    })
+                    
+                    if (iteration + 1) % 10 == 0:
+                        percent = 100 * (iteration + 1) // iterations
+                        stats = device_iface.get_session_stats()
+                        success_rate = stats.get('success_rate', 0)
+                        print(color_string((CY, f"   • Progress: {iteration + 1}/{iterations} ({percent}%) [Success: {success_rate:.1f}%]")))
+                    
+                    time.sleep(args.slowdown)
+                    
+                except KeyboardInterrupt:
+                    print(f"\n" + color_string((CY, f"   ⚠ Fuzzing interrupted by user at iteration {iteration + 1}")))
+                    break
                 except Exception as e:
-                    device_errors += 1
-                    behavior = f"ERROR: {str(e)[:50]}"
-                    interesting_behaviors.append((iteration, mutated_key.hex(), behavior))
-                results.append({
-                    "iteration": iteration,
-                    "mutated_key": mutated_key.hex().upper(),
-                    "original_key": key.hex().upper(),
-                    "behavior": behavior,
-                    "timestamp": datetime.now().isoformat()
-                })
-                if (iteration + 1) % 10 == 0:
-                    print(f"   Progress: {iteration + 1}/{iterations} ({100 * (iteration + 1) // iterations}%)")
-                time.sleep(args.slowdown)
-            except KeyboardInterrupt:
-                print(f"\n - Fuzzing interrupted by user at iteration {iteration + 1}")
-                break
-            except Exception as e:
-                print(f"\n - Error during fuzzing: {e}")
-                device_errors += 1
+                    print(color_string((CR, f"   ✗ Error at iteration {iteration + 1}: {e}")))
+                    
+        except Exception as e:
+            print(color_string((CR, f" ✗ Fuzzing error: {e}")))
+        
+        # End session and get final stats
         elapsed = (datetime.now() - start_time).total_seconds()
-        print(f"\n - Fuzzing completed in {elapsed:.2f} seconds")
-        print(f" - Results Summary:")
-        print(f"   Successful Authentications: {successful_auth}")
-        print(f"   Failed Authentications: {failed_auth}")
-        print(f"   Device Errors: {device_errors}")
-        print(f"   Total Mutations: {len(results)}")
+        final_stats = device_iface.end_session()
+        
+        print(color_string((CB, " ◆ Fuzzing completed")))
+        print(color_string((CG, f" ✓ Duration: {elapsed:.2f} seconds")))
+        print(color_string((CG, f" ✓ Total Mutations: {len(results)}")))
+        
+        if final_stats:
+            print(color_string((CG, f" ✓ Successful Auth: {final_stats.get('successful_auths', 0)}")))
+            print(color_string((CG, f" ✓ Failed Auth: {final_stats.get('failed_auths', 0)}")))
+            print(color_string((CG, f" ✓ Errors: {final_stats.get('errors', 0)}")))
+            print(color_string((CG, f" ✓ Timeouts: {final_stats.get('timeouts', 0)}")))
+            print(color_string((CG, f" ✓ Success Rate: {final_stats.get('success_rate', 0):.1f}%")))
+            if failed_health_checks > 0:
+                print(color_string((CY, f" ⚠ Health Check Failures: {failed_health_checks}")))
+        
         if interesting_behaviors:
-            print(f" - Interesting Behaviors Found: {len(interesting_behaviors)}")
+            print(color_string((CY, f" ⚠ Interesting Behaviors: {len(interesting_behaviors)}")))
             for iter_num, key, behavior in interesting_behaviors[:10]:
-                print(f"   [{iter_num}] {key}: {behavior}")
+                print(color_string((CY, f"   [{iter_num}] {key}: {behavior}")))
+        
+        # Save results
         output_file = args.output
         if output_file:
             try:
@@ -3268,9 +3330,10 @@ class HFMFFuzzer(ReaderRequiredUnit):
                     writer = csv.DictWriter(f, fieldnames=["iteration", "mutated_key", "original_key", "behavior", "timestamp"])
                     writer.writeheader()
                     writer.writerows(results)
-                print(f" - Results saved to: {os.path.abspath(output_file)}")
+                abs_path = os.path.abspath(output_file)
+                print(color_string((CG, f" ✓ Results saved: {abs_path}")))
             except Exception as e:
-                print(color_string((CR, f" - Error saving results: {e}")))
+                print(color_string((CR, f" ✗ Error saving results: {e}")))
 
 
 @hf_mfu.command("ercnt")
