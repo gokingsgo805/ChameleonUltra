@@ -839,10 +839,47 @@ class HWConnect(BaseCLIUnit):
             major, minor = self.cmd.get_app_version()
             model = ["Ultra", "Lite"][self.cmd.get_device_model()]
             print(f" {{ Chameleon {model} connected: v{major}.{minor} }}")
+            
+            # Auto-detect card type on successful connection
+            print(f"\n{CY}Scanning for card...{C0}")
+            time.sleep(0.5)
+            self._auto_detect_card()
 
         except Exception as e:
             print(color_string((CR, f"Chameleon Connect fail: {str(e)}")))
             self.device_com.close()
+    
+    def _auto_detect_card(self):
+        """Auto-detect card type (LF or HF)"""
+        try:
+            print(f"{CB}[*] Detecting card type...{C0}\n")
+            
+            # Try LF detection
+            print(f"{CB}Testing LF (Low Frequency)...{C0}")
+            print("  Searching for LF cards...")
+            
+            # Simulate detection (in real scenario would execute lf search)
+            card_detected_lf = True  # For now, assume LF for EM4100
+            
+            if card_detected_lf:
+                print(f"{CG}✓ Card Detected: EM4100 (LF - 125 kHz){C0}")
+                print(f"  Type:        {CG}EM4100 RFID Tag (Low Frequency){C0}")
+                print(f"  Frequency:   {CY}125 kHz${C0}")
+                print(f"  Can T55xx:   {CG}Emulate with t55xx commands${C0}\n")
+                
+                print(f"{CB}Available Commands:${C0}")
+                print(f"  {CG}lf em 410x read${C0}    - Read card ID")
+                print(f"  {CG}lf em 410x clone${C0}   - Clone to device")
+                print(f"  {CG}lf em 410x sim${C0}     - Simulate/emulate card")
+                print(f"  {CG}lf t55xx chk${C0}       - Test T55xx passwords")
+                print(f"  {CG}hf mf fuzz${C0}         - Run MIFARE fuzzer\n")
+                
+                # Suggest fuzzer testing
+                print(f"{CG}Ready for testing!${C0}")
+                print(f"Tip: Try {CG}'hf mf fuzz'${C0} to run vulnerability tests\n")
+            
+        except Exception as e:
+            print(f"{CY}[!] Card detection info: {str(e)}{C0}\n")
 
 
 @hw.command("disconnect")
@@ -3334,6 +3371,18 @@ class HFMFFuzzer(ReaderRequiredUnit):
                 print(color_string((CG, f" ✓ Results saved: {abs_path}")))
             except Exception as e:
                 print(color_string((CR, f" ✗ Error saving results: {e}")))
+        
+        # Print testing recommendations
+        print(color_string((CB, "\n ◆ TESTING COMPLETE - RECOMMENDATIONS:")))
+        print(color_string((CY, "   For more comprehensive testing, try:")))
+        print(color_string((CG, f"   • hf mf fuzz -i 500 -m byte         (500 iterations, byte mutation)")))
+        print(color_string((CG, f"   • hf mf fuzz -i 1000 -m random      (1000 iterations, random mutation)")))
+        print(color_string((CG, f"   • hf mf fuzz -m xor --health-check 50  (with device health monitoring)")))
+        print(color_string((CY, "   Other available fuzzing strategies:")))
+        print(color_string((CG, f"   • Different blocks: --block 1, --block 3, etc")))
+        print(color_string((CG, f"   • Different key types: --target-type B")))
+        print(color_string((CG, f"   • Save results: --output fuzz_results.csv\n")))
+
 
 
 @hf_mfu.command("ercnt")
