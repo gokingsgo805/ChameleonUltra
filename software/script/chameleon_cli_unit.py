@@ -850,12 +850,8 @@ class HWConnect(BaseCLIUnit):
             self.device_com.close()
 
     def _auto_detect_card(self):
-        """Auto-detect card type by scanning antenna in reader mode"""
+        """Auto-detect card type by scanning antenna"""
         try:
-            # Ensure device is in reader mode for antenna scanning
-            self.cmd.set_device_mode("reader")
-            time.sleep(0.2)
-
             print(f"{CB}[*] Scanning antenna for physical cards...{C0}\n")
 
             # Try LF detection via actual antenna scan
