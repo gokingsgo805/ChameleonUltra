@@ -840,9 +840,44 @@ class HWConnect(BaseCLIUnit):
             model = ["Ultra", "Lite"][self.cmd.get_device_model()]
             print(f" {{ Chameleon {model} connected: v{major}.{minor} }}")
 
+            # Auto-scan for cards on both antennas
+            print(f"\n{CY}Auto-scanning antennas...{C0}")
+            # HF scan (13.56 MHz)
+            try:
+                hf_resp = self.cmd.hf14a_scan()
+                if hf_resp.status == chameleon_enum.Status.HF_TAG_OK and hf_resp.parsed:
+                    for tag in hf_resp.parsed:
+                        uid_hex = tag["uid"].hex().upper()
+                        sak = tag["sak"].hex().upper()
+                        atqa = tag["atqa"].hex().upper()
+                        tag_type = type_id_SAK_dict.get(
+                            int(tag["sak"].hex(), 16), "Unknown HF Tag"
+                        )
+                        print(
+                            f" {CG}[HF] Card found: UID={uid_hex} SAK={sak} ATQA={atqa}{C0}"
+                        )
+                        print(f" {CG}     Type: {tag_type}{C0}")
+                else:
+                    print(f" {CC}[HF] No card detected (13.56 MHz){C0}")
+            except Exception:
+                print(f" {CC}[HF] No card detected (13.56 MHz){C0}")
+            # LF scan (125 kHz)
+            try:
+                lf_resp = self.cmd.em410x_scan()
+                if lf_resp.status == chameleon_enum.Status.LF_TAG_OK and lf_resp.parsed:
+                    _, uid_bytes = lf_resp.parsed
+                    uid_hex = uid_bytes.hex().upper().lstrip("0") or "0"
+                    print(f" {CG}[LF] Card found: EM410x UID={uid_hex}{C0}")
+                else:
+                    print(f" {CC}[LF] No card detected (125 kHz){C0}")
+            except Exception:
+                print(f" {CC}[LF] No card detected (125 kHz){C0}")
+            print()
+
         except Exception as e:
             print(color_string((CR, f"Chameleon Connect fail: {str(e)}")))
             self.device_com.close()
+
 
 @hw.command("disconnect")
 class HWDisconnect(BaseCLIUnit):
