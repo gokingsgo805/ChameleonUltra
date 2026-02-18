@@ -840,11 +840,6 @@ class HWConnect(BaseCLIUnit):
             model = ["Ultra", "Lite"][self.cmd.get_device_model()]
             print(f" {{ Chameleon {model} connected: v{major}.{minor} }}")
 
-            # Auto-detect card type on successful connection
-            print(f"\n{CY}Scanning for card...{C0}")
-            time.sleep(0.5)
-            self._auto_detect_card()
-
         except Exception as e:
             print(color_string((CR, f"Chameleon Connect fail: {str(e)}")))
             self.device_com.close()
