@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+"""Stub for mfkey32v2 attack tool"""
+
+import sys
+
+print(
+    "ERROR: 'mfkey32v2' binary not found! Please compile from source or download pre-built binaries."
+)
+sys.exit(1)

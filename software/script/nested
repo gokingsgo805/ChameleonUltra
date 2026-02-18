@@ -1,0 +1,33 @@
+#!/usr/bin/env python3
+"""
+Stub for nested attack tool
+This is a placeholder that allows the CLI to recognize the tool exists
+but will return an error indicating the tool needs to be compiled
+"""
+
+import sys
+
+
+def main():
+    print("ERROR: 'nested' binary not found!")
+    print()
+    print("The nested attack tool needs to be compiled from C source.")
+    print("To build this tool, you need:")
+    print("  1. A C compiler (GCC, MSVC, or Clang)")
+    print("  2. CMake (>=3.5)")
+    print()
+    print("Build instructions:")
+    print("  cd software/src")
+    print("  mkdir build && cd build")
+    print("  cmake ..")
+    print("  cmake --build . --config Release")
+    print()
+    print("Alternatively, you can:")
+    print("  1. Use Docker: docker run --rm -v $(pwd):/workdir ...")
+    print("  2. Download pre-built Windows binaries from GitHub Actions")
+    print("  3. Use WSL (Windows Subsystem for Linux) with Linux tools")
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

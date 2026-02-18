@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+"""Stub for staticnested_1nt attack tool"""
+
+import sys
+
+print(
+    "ERROR: 'staticnested_1nt' binary not found! Please compile from source or download pre-built binaries."
+)
+sys.exit(1)
