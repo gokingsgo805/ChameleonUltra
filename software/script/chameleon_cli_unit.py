@@ -844,47 +844,6 @@ class HWConnect(BaseCLIUnit):
             print(color_string((CR, f"Chameleon Connect fail: {str(e)}")))
             self.device_com.close()
 
-    def _auto_detect_card(self):
-        """Auto-detect card type by scanning antenna"""
-        try:
-            print(f"{CB}[*] Scanning antenna for physical cards...{C0}\n")
-
-            # Try LF detection via actual antenna scan
-            print(f"{CB}Testing LF (Low Frequency @ 125 kHz)...{C0}")
-            try:
-                # This would execute the actual lf search command
-                # For now, we indicate that the scan is being performed
-                print("  Searching antenna for LF cards...")
-
-                # In a real implementation, this would be:
-                # response = self.cmd.run_command("lf search")
-                # If response contains card data, parse it
-
-                card_detected_lf = False  # Start as None - actual detection needed
-
-                # Placeholder: Actual card detection would happen here
-                # For production, integrate with real lf search command
-                print(f"  {CY}[No physical card detected on antenna]{C0}")
-                print(f"  {CY}Place a card on the antenna and try: lf search{C0}\n")
-
-            except Exception as lf_error:
-                print(f"  {CY}[LF scan info: {str(lf_error)}]{C0}\n")
-                card_detected_lf = False
-
-            # Show device capabilities (not physical cards)
-            print(f"{CB}Device Capabilities:{C0}")
-            print(f"  {CG}Mode: Reader (antenna active){C0}")
-            print(f"  {CG}Supported: LF (125 kHz), HF (13.56 MHz){C0}\n")
-
-            print(f"{CB}Commands to try:{C0}")
-            print(f"  {CG}lf search{C0}         - Scan LF antenna for physical cards")
-            print(f"  {CG}hf search{C0}         - Scan HF antenna for physical cards")
-            print(f"  {CG}hw mode{C0}           - Switch to emulator mode\n")
-
-        except Exception as e:
-            print(f"{CY}[!] Auto-detection info: {str(e)}{C0}\n")
-
-
 @hw.command("disconnect")
 class HWDisconnect(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
