@@ -879,6 +879,50 @@ class HWConnect(BaseCLIUnit):
             self.device_com.close()
 
 
+@hw.command("scan")
+class HWScan(DeviceRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = "Scan both HF and LF antennas for cards"
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        print(f"{CY}Scanning antennas...{C0}")
+
+        # HF scan (13.56 MHz)
+        try:
+            hf_resp = self.cmd.hf14a_scan()
+            if hf_resp.status == Status.HF_TAG_OK and hf_resp.parsed:
+                for tag in hf_resp.parsed:
+                    uid_hex = tag["uid"].hex().upper()
+                    sak = tag["sak"].hex().upper()
+                    atqa = tag["atqa"].hex().upper()
+                    tag_type = type_id_SAK_dict.get(
+                        int(tag["sak"].hex(), 16), "Unknown HF Tag"
+                    )
+                    print(
+                        f" {CG}[HF] Card found: UID={uid_hex} SAK={sak} ATQA={atqa}{C0}"
+                    )
+                    print(f" {CG}     Type: {tag_type}{C0}")
+            else:
+                print(f" {CC}[HF] No card detected (13.56 MHz){C0}")
+        except Exception:
+            print(f" {CC}[HF] No card detected (13.56 MHz){C0}")
+
+        # LF scan (125 kHz)
+        try:
+            lf_resp = self.cmd.em410x_scan()
+            if lf_resp.status == Status.LF_TAG_OK and lf_resp.parsed:
+                _, uid_bytes = lf_resp.parsed
+                uid_hex = uid_bytes.hex().upper().lstrip("0") or "0"
+                print(f" {CG}[LF] Card found: EM410x UID={uid_hex}{C0}")
+            else:
+                print(f" {CC}[LF] No card detected (125 kHz){C0}")
+        except Exception:
+            print(f" {CC}[LF] No card detected (125 kHz){C0}")
+        print()
+
+
 @hw.command("disconnect")
 class HWDisconnect(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
