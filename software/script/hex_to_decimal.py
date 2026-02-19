@@ -35,7 +35,7 @@ def hex_to_decimal(hex_string):
 
 
 def analyze_card_id(hex_id):
-    """Analyze and display card ID information"""
+    """Analyze and display card ID information. Returns True on success."""
     print(f"\n{CB}{'=' * 70}{C0}")
     print(f"{CB}         EM4100 CARD ID ANALYSIS{C0}")
     print(f"{CB}{'=' * 70}{C0}\n")
@@ -45,7 +45,7 @@ def analyze_card_id(hex_id):
 
     if decimal is None:
         print(f"{CR}✗ Invalid hex format: {hex_id}{C0}")
-        return
+        return False
 
     print(f"{CG}Card ID Information:{C0}")
     # Clean and pretty-print (EM4100 is typically 5 bytes = 10 hex chars)
@@ -82,6 +82,7 @@ def analyze_card_id(hex_id):
     print(f"  Typical Use:   Access control, Animal tagging, RFID badges\n")
 
     print(f"{CB}{'=' * 70}{C0}\n")
+    return True
 
 
 def example_conversions():
@@ -117,7 +118,8 @@ def main():
     # Check for command line argument
     if len(sys.argv) > 1:
         hex_id = sys.argv[1]
-        analyze_card_id(hex_id)
+        ok = analyze_card_id(hex_id)
+        return 0 if ok else 1
     else:
         # Interactive mode
         print(f"{CY}Enter your card ID in hexadecimal format:{C0}")
@@ -133,16 +135,18 @@ def main():
             print(f"{CR}✗ No input provided{C0}\n")
             return 1
 
-        analyze_card_id(hex_input)
+        ok = analyze_card_id(hex_input)
+        if not ok:
+            return 1
 
         # Show examples
         show_examples = (
             input(f"{CG}Show example conversions? (y/n): {C0}").strip().lower()
         )
         if show_examples == "y":
-            example_conversions()
+                example_conversions()
 
-    return 0
+            return 0
 
 
 if __name__ == "__main__":
