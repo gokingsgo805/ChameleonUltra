@@ -845,7 +845,7 @@ class HWConnect(BaseCLIUnit):
             # HF scan (13.56 MHz)
             try:
                 hf_resp = self.cmd.hf14a_scan()
-                if hf_resp.status == chameleon_enum.Status.HF_TAG_OK and hf_resp.parsed:
+                if hf_resp.status == Status.HF_TAG_OK and hf_resp.parsed:
                     for tag in hf_resp.parsed:
                         uid_hex = tag["uid"].hex().upper()
                         sak = tag["sak"].hex().upper()
@@ -864,7 +864,7 @@ class HWConnect(BaseCLIUnit):
             # LF scan (125 kHz)
             try:
                 lf_resp = self.cmd.em410x_scan()
-                if lf_resp.status == chameleon_enum.Status.LF_TAG_OK and lf_resp.parsed:
+                if lf_resp.status == Status.LF_TAG_OK and lf_resp.parsed:
                     _, uid_bytes = lf_resp.parsed
                     uid_hex = uid_bytes.hex().upper().lstrip("0") or "0"
                     print(f" {CG}[LF] Card found: EM410x UID={uid_hex}{C0}")
