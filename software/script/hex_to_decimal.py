@@ -144,9 +144,9 @@ def main():
             input(f"{CG}Show example conversions? (y/n): {C0}").strip().lower()
         )
         if show_examples == "y":
-                example_conversions()
+            example_conversions()
 
-            return 0
+    return 0
 
 
 if __name__ == "__main__":

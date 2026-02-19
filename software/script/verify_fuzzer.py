@@ -8,7 +8,7 @@ print("     CHAMELEON ULTRA RFID FUZZER - VERIFICATION REPORT")
 print("=" * 70)
 
 # Test 1: Import fuzzer
-print("\n[1/4] Testing fuzzer import...")
+print("\n[1/5] Testing fuzzer import...")
 try:
     from chameleon_cli_unit import HFMFFuzzer
 
@@ -18,7 +18,7 @@ except Exception as e:
     sys.exit(1)
 
 # Test 2: Check command registration
-print("\n[2/4] Testing command registration...")
+print("\n[2/5] Testing command registration...")
 try:
     from chameleon_cli_unit import hf_mf
 
@@ -37,7 +37,7 @@ except Exception as e:
     sys.exit(1)
 
 # Test 3: Check arguments
-print("\n[3/4] Testing argument parser...")
+print("\n[3/5] Testing argument parser...")
 try:
     fuzzer = HFMFFuzzer()
     parser = fuzzer.args_parser()
