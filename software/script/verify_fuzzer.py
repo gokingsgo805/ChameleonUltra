@@ -77,10 +77,10 @@ try:
     mut_xor = fuzzer.fuzz_data(test_key, "xor", seed=123)
     mut_rand = fuzzer.fuzz_data(test_key, "random", seed=123)
 
-    print(f"      ✓ bit mutation:    {test_key.hex()} -> {mut_bit.hex()}")
-    print(f"      ✓ byte mutation:   {test_key.hex()} -> {mut_byte.hex()}")
-    print(f"      ✓ xor mutation:    {test_key.hex()} -> {mut_xor.hex()}")
-    print("      ✓ random mutation: " + test_key.hex() + " -> " + mut_rand.hex())
+    print(f"      [OK] bit mutation:    {test_key.hex()} -> {mut_bit.hex()}")
+    print(f"      [OK] byte mutation:   {test_key.hex()} -> {mut_byte.hex()}")
+    print(f"      [OK] xor mutation:    {test_key.hex()} -> {mut_xor.hex()}")
+    print("      [OK] random mutation: " + test_key.hex() + " -> " + mut_rand.hex())
 except Exception as e:
     print(f"      ✗ Mutation test failed: {e}")
     sys.exit(1)
