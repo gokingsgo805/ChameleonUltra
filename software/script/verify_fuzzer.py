@@ -91,7 +91,7 @@ try:
     from device_interface import DeviceMode
 
     print("      [OK] Device interface imported successfully")
-    print("      [OK] DeviceMode enum available (READER, TAG, UNKNOWN)")
+    print("      [OK] DeviceMode enum available: READER, TAG, UNKNOWN")
     print("      [OK] Device integration layer ready")
 except Exception as e:
     print(f"      [FAIL] Device interface test failed: {e}")
