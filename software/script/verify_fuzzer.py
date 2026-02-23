@@ -88,10 +88,11 @@ except Exception as e:
 # Test 5: Check device interface integration
 print("\n[5/5] Testing device interface...")
 try:
-    from device_interface import DeviceMode
+    from device_interface import DeviceInterface, DeviceMode, AuthResult
 
     print("      [OK] Device interface imported successfully")
     print("      [OK] DeviceMode enum available: READER, TAG, UNKNOWN")
+    print("      [OK] AuthResult enum available: SUCCESS, FAILURE, TIMEOUT, ERROR")
     print("      [OK] Device integration layer ready")
 except Exception as e:
     print(f"      [FAIL] Device interface test failed: {e}")
