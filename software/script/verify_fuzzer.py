@@ -12,9 +12,9 @@ print("\n[1/5] Testing fuzzer import...")
 try:
     from chameleon_cli_unit import HFMFFuzzer
 
-    print("      ✓ HFMFFuzzer class imported successfully")
+    print("      [OK] HFMFFuzzer class imported successfully")
 except Exception as e:
-    print(f"      ✗ Import failed: {e}")
+    print(f"      [FAIL] Import failed: {e}")
     sys.exit(1)
 
 # Test 2: Check command registration
@@ -26,14 +26,14 @@ try:
     for child in hf_mf.children:
         if child.name == "fuzz":
             fuzzer_found = True
-            print(f"      ✓ Found command: {child.fullname}")
-            print(f"      ✓ Description: {child.help_text[:50]}...")
+            print(f"      [OK] Found command: {child.fullname}")
+            print(f"      [OK] Description: {child.help_text[:50]}...")
             break
     if not fuzzer_found:
-        print("      ✗ Fuzzer command not registered!")
+        print("      [FAIL] Fuzzer command not registered!")
         sys.exit(1)
 except Exception as e:
-    print(f"      ✗ Registration check failed: {e}")
+    print(f"      [FAIL] Registration check failed: {e}")
     sys.exit(1)
 
 # Test 3: Check arguments
@@ -42,9 +42,9 @@ try:
     fuzzer = HFMFFuzzer()
     parser = fuzzer.args_parser()
     args_count = len(parser._actions) - 1  # Exclude help
-    print(f"      ✓ Arguments count: {args_count}")
+    print(f"      [OK] Arguments count: {args_count}")
     print(
-        "      ✓ Arguments: iterations, block, target_type, mutation_type, output, seed, slowdown, retries, health-check, verbose"
+        "      [OK] Arguments: iterations, block, target_type, mutation_type, output, seed, slowdown, retries, health-check, verbose"
     )
 
     # Test basic parsing
@@ -52,7 +52,7 @@ try:
         ["-i", "50", "-b", "3", "-m", "byte", "-o", "test.csv"]
     )
     print(
-        f"      ✓ Can parse: iterations={test_args.iterations}, block={test_args.block}"
+        f"      [OK] Can parse: iterations={test_args.iterations}, block={test_args.block}"
     )
 
     # Test device integration arguments
@@ -60,10 +60,10 @@ try:
         ["-i", "100", "--retries", "3", "--health-check", "50", "--verbose"]
     )
     print(
-        f"      ✓ Device args: retries={test_args_dev.retries}, health_check={test_args_dev.health_check}, verbose={test_args_dev.verbose}"
+        f"      [OK] Device args: retries={test_args_dev.retries}, health_check={test_args_dev.health_check}, verbose={test_args_dev.verbose}"
     )
 except Exception as e:
-    print(f"      ✗ Argument test failed: {e}")
+    print(f"      [FAIL] Argument test failed: {e}")
     sys.exit(1)
 
 # Test 4: Check mutation methods
@@ -82,7 +82,7 @@ try:
     print(f"      [OK] xor mutation:    {test_key.hex()} -> {mut_xor.hex()}")
     print("      [OK] random mutation: " + test_key.hex() + " -> " + mut_rand.hex())
 except Exception as e:
-    print(f"      ✗ Mutation test failed: {e}")
+    print(f"      [FAIL] Mutation test failed: {e}")
     sys.exit(1)
 
 # Test 5: Check device interface integration
@@ -90,15 +90,15 @@ print("\n[5/5] Testing device interface...")
 try:
     from device_interface import DeviceMode
 
-    print("      ✓ Device interface imported successfully")
-    print("      ✓ DeviceMode enum available (READER, TAG, UNKNOWN)")
-    print("      ✓ Device integration layer ready")
+    print("      [OK] Device interface imported successfully")
+    print("      [OK] DeviceMode enum available (READER, TAG, UNKNOWN)")
+    print("      [OK] Device integration layer ready")
 except Exception as e:
-    print(f"      ✗ Device interface test failed: {e}")
+    print(f"      [FAIL] Device interface test failed: {e}")
     sys.exit(1)
 
 print("\n" + "=" * 70)
-print("     ALL TESTS PASSED ✓")
+print("     ALL TESTS PASSED [OK]")
 print("=" * 70)
 print("\nFuzzer is ready to use!")
 print("Command: hf mf fuzz")
