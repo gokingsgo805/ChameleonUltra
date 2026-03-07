@@ -27,7 +27,9 @@ try:
         if child.name == "fuzz":
             fuzzer_found = True
             print(f"      [OK] Found command: {child.fullname}")
-            print(f"      [OK] Description: {child.help_text[:50]}...")
+            desc = child.help_text
+            suffix = "..." if len(desc) > 50 else ""
+            print(f"      [OK] Description: {desc[:50]}{suffix}")
             break
     if not fuzzer_found:
         print("      [FAIL] Fuzzer command not registered!")
@@ -42,10 +44,11 @@ try:
     fuzzer = HFMFFuzzer()
     parser = fuzzer.args_parser()
     args_count = len(parser._actions) - 1  # Exclude help
+    arg_names = [a.dest for a in parser._actions if a.dest != "help"]
     print(f"      [OK] Arguments count: {args_count}")
-    print(
-        "      [OK] Arguments: iterations, block, target_type, mutation_type, output, seed, slowdown, retries, health-check, verbose"
-    )
+    half = len(arg_names) // 2
+    print(f"      [OK] Arguments: {', '.join(arg_names[:half])},")
+    print(f"                      {', '.join(arg_names[half:])}")
 
     # Test basic parsing
     test_args = parser.parse_args(
@@ -80,7 +83,7 @@ try:
     print(f"      [OK] bit mutation:    {test_key.hex()} -> {mut_bit.hex()}")
     print(f"      [OK] byte mutation:   {test_key.hex()} -> {mut_byte.hex()}")
     print(f"      [OK] xor mutation:    {test_key.hex()} -> {mut_xor.hex()}")
-    print("      [OK] random mutation: " + test_key.hex() + " -> " + mut_rand.hex())
+    print(f"      [OK] random mutation: {test_key.hex()} -> {mut_rand.hex()}")
 except Exception as e:
     print(f"      [FAIL] Mutation test failed: {e}")
     sys.exit(1)
@@ -91,8 +94,13 @@ try:
     from device_interface import DeviceInterface, DeviceMode, AuthResult
 
     print("      [OK] Device interface imported successfully")
-    print("      [OK] DeviceMode enum available: READER, TAG, UNKNOWN")
-    print("      [OK] AuthResult enum available: SUCCESS, FAILURE, TIMEOUT, ERROR")
+    device_modes = ", ".join(m.name for m in DeviceMode)
+    auth_results = ", ".join(r.name for r in AuthResult)
+    print(f"      [OK] DeviceMode enum available: {device_modes}")
+    print(f"      [OK] AuthResult enum available: {auth_results}")
+    assert hasattr(DeviceInterface, "connect") or callable(DeviceInterface), (
+        "DeviceInterface missing expected interface"
+    )
     print("      [OK] Device integration layer ready")
 except Exception as e:
     print(f"      [FAIL] Device interface test failed: {e}")

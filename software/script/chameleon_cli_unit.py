@@ -840,37 +840,37 @@ class HWConnect(BaseCLIUnit):
             model = ["Ultra", "Lite"][self.cmd.get_device_model()]
             print(f" {{ Chameleon {model} connected: v{major}.{minor} }}")
 
+            # Default to reader mode when supported (Lite may not implement mode switch).
+            try:
+                self.cmd.set_device_reader_mode(True)
+                print(f" {CG}Switch to {{ Tag Reader }} mode.{C0}")
+            except UnexpectedResponseError as mode_error:
+                print(f" {CY}Reader mode switch skipped: {mode_error}{C0}")
+
             # Auto-scan for cards on both antennas
             print(f"\n{CY}Auto-scanning antennas...{C0}")
             # HF scan (13.56 MHz)
             try:
-                hf_resp = self.cmd.hf14a_scan()
-                if hf_resp.status == Status.HF_TAG_OK and hf_resp.parsed:
-                    for tag in hf_resp.parsed:
-                        uid_hex = tag["uid"].hex().upper()
-                        sak = tag["sak"].hex().upper()
-                        atqa = tag["atqa"].hex().upper()
-                        tag_type = type_id_SAK_dict.get(
-                            int(tag["sak"].hex(), 16), "Unknown HF Tag"
-                        )
-                        print(
-                            f" {CG}[HF] Card found: UID={uid_hex} SAK={sak} ATQA={atqa}{C0}"
-                        )
-                        print(f" {CG}     Type: {tag_type}{C0}")
-                else:
-                    print(f" {CC}[HF] No card detected (13.56 MHz){C0}")
-            except Exception:
+                hf_tags = self.cmd.hf14a_scan()
+                for tag in hf_tags:
+                    uid_hex = tag["uid"].hex().upper()
+                    sak = tag["sak"].hex().upper()
+                    atqa = tag["atqa"].hex().upper()
+                    tag_type = type_id_SAK_dict.get(
+                        int(tag["sak"].hex(), 16), "Unknown HF Tag"
+                    )
+                    print(
+                        f" {CG}[HF] Card found: UID={uid_hex} SAK={sak} ATQA={atqa}{C0}"
+                    )
+                    print(f" {CG}     Type: {tag_type}{C0}")
+            except UnexpectedResponseError:
                 print(f" {CC}[HF] No card detected (13.56 MHz){C0}")
             # LF scan (125 kHz)
             try:
-                lf_resp = self.cmd.em410x_scan()
-                if lf_resp.status == Status.LF_TAG_OK and lf_resp.parsed:
-                    _, uid_bytes = lf_resp.parsed
-                    uid_hex = uid_bytes.hex().upper().lstrip("0") or "0"
-                    print(f" {CG}[LF] Card found: EM410x UID={uid_hex}{C0}")
-                else:
-                    print(f" {CC}[LF] No card detected (125 kHz){C0}")
-            except Exception:
+                _, uid_bytes = self.cmd.em410x_scan()
+                uid_hex = uid_bytes.hex().upper().lstrip("0") or "0"
+                print(f" {CG}[LF] Card found: EM410x UID={uid_hex}{C0}")
+            except UnexpectedResponseError:
                 print(f" {CC}[LF] No card detected (125 kHz){C0}")
             print()
 
@@ -891,34 +891,25 @@ class HWScan(DeviceRequiredUnit):
 
         # HF scan (13.56 MHz)
         try:
-            hf_resp = self.cmd.hf14a_scan()
-            if hf_resp.status == Status.HF_TAG_OK and hf_resp.parsed:
-                for tag in hf_resp.parsed:
-                    uid_hex = tag["uid"].hex().upper()
-                    sak = tag["sak"].hex().upper()
-                    atqa = tag["atqa"].hex().upper()
-                    tag_type = type_id_SAK_dict.get(
-                        int(tag["sak"].hex(), 16), "Unknown HF Tag"
-                    )
-                    print(
-                        f" {CG}[HF] Card found: UID={uid_hex} SAK={sak} ATQA={atqa}{C0}"
-                    )
-                    print(f" {CG}     Type: {tag_type}{C0}")
-            else:
-                print(f" {CC}[HF] No card detected (13.56 MHz){C0}")
-        except Exception:
+            hf_tags = self.cmd.hf14a_scan()
+            for tag in hf_tags:
+                uid_hex = tag["uid"].hex().upper()
+                sak = tag["sak"].hex().upper()
+                atqa = tag["atqa"].hex().upper()
+                tag_type = type_id_SAK_dict.get(
+                    int(tag["sak"].hex(), 16), "Unknown HF Tag"
+                )
+                print(f" {CG}[HF] Card found: UID={uid_hex} SAK={sak} ATQA={atqa}{C0}")
+                print(f" {CG}     Type: {tag_type}{C0}")
+        except UnexpectedResponseError:
             print(f" {CC}[HF] No card detected (13.56 MHz){C0}")
 
         # LF scan (125 kHz)
         try:
-            lf_resp = self.cmd.em410x_scan()
-            if lf_resp.status == Status.LF_TAG_OK and lf_resp.parsed:
-                _, uid_bytes = lf_resp.parsed
-                uid_hex = uid_bytes.hex().upper().lstrip("0") or "0"
-                print(f" {CG}[LF] Card found: EM410x UID={uid_hex}{C0}")
-            else:
-                print(f" {CC}[LF] No card detected (125 kHz){C0}")
-        except Exception:
+            _, uid_bytes = self.cmd.em410x_scan()
+            uid_hex = uid_bytes.hex().upper().lstrip("0") or "0"
+            print(f" {CG}[LF] Card found: EM410x UID={uid_hex}{C0}")
+        except UnexpectedResponseError:
             print(f" {CC}[LF] No card detected (125 kHz){C0}")
         print()
 
@@ -1203,7 +1194,7 @@ class HFMFNested(ReaderRequiredUnit):
         if block_known == block_target and type_known == type_target:
             print(color_string((CR, "Target key already known")))
             return
-        print(f" - Nested recover one key running...")
+        print(" - Nested recover one key running...")
         key = self.recover_a_key(
             block_known, type_known, key_known_bytes, block_target, type_target
         )
@@ -3456,7 +3447,7 @@ class HFMFFuzzer(ReaderRequiredUnit):
 
                 except KeyboardInterrupt:
                     print(
-                        f"\n"
+                        "\n"
                         + color_string(
                             (
                                 CY,
@@ -3551,7 +3542,7 @@ class HFMFFuzzer(ReaderRequiredUnit):
             color_string(
                 (
                     CG,
-                    f"   • hf mf fuzz -i 500 -m byte         (500 iterations, byte mutation)",
+                    "   • hf mf fuzz -i 500 -m byte         (500 iterations, byte mutation)",
                 )
             )
         )
@@ -3559,7 +3550,7 @@ class HFMFFuzzer(ReaderRequiredUnit):
             color_string(
                 (
                     CG,
-                    f"   • hf mf fuzz -i 1000 -m random      (1000 iterations, random mutation)",
+                    "   • hf mf fuzz -i 1000 -m random      (1000 iterations, random mutation)",
                 )
             )
         )
@@ -3567,14 +3558,14 @@ class HFMFFuzzer(ReaderRequiredUnit):
             color_string(
                 (
                     CG,
-                    f"   • hf mf fuzz -m xor --health-check 50  (with device health monitoring)",
+                    "   • hf mf fuzz -m xor --health-check 50  (with device health monitoring)",
                 )
             )
         )
         print(color_string((CY, "   Other available fuzzing strategies:")))
-        print(color_string((CG, f"   • Different blocks: --block 1, --block 3, etc")))
-        print(color_string((CG, f"   • Different key types: --target-type B")))
-        print(color_string((CG, f"   • Save results: --output fuzz_results.csv\n")))
+        print(color_string((CG, "   • Different blocks: --block 1, --block 3, etc")))
+        print(color_string((CG, "   • Different key types: --target-type B")))
+        print(color_string((CG, "   • Save results: --output fuzz_results.csv\n")))
 
 
 @hf_mfu.command("ercnt")
@@ -3689,7 +3680,7 @@ class HFMFURDPG(MFUAuthArgsUnit):
                     resp_timeout_ms=200,
                     data=struct.pack("!BB", 0x30, args.page),
                 )
-            except:
+            except Exception:
                 # we may lose the tag again here
                 pass
             print(color_string((CR, " - Auth failed")))
@@ -3781,7 +3772,7 @@ class HFMFUWRPG(MFUAuthArgsUnit):
                     resp_timeout_ms=200,
                     data=struct.pack("!BB", 0x30, args.page),
                 )
-            except:
+            except Exception:
                 # we may lose the tag again here
                 pass
             print(color_string((CR, " - Auth failed")))
@@ -3946,7 +3937,7 @@ class HFMFUESAVE(DeviceRequiredUnit):
                     version = self.cmd.mf0_ntag_get_version_data()
 
                     fd.write(f"# Version: {version.hex()}\n")
-                except:
+                except Exception:
                     pass  # slot does not have version data
 
                 try:
@@ -3954,7 +3945,7 @@ class HFMFUESAVE(DeviceRequiredUnit):
 
                     if signature != b"\x00" * 32:
                         fd.write(f"# Signature: {signature.hex()}\n")
-                except:
+                except Exception:
                     pass  # slot does not have signature data
 
             page = 0
@@ -4035,7 +4026,7 @@ class HFMFURCNT(MFUAuthArgsUnit):
                     resp_timeout_ms=200,
                     data=struct.pack("!BB", 0x39, args.counter),
                 )
-            except:
+            except Exception:
                 # we may lose the tag again here
                 pass
             print(color_string((CR, " - Auth failed")))
@@ -4124,7 +4115,7 @@ class HFMFUDUMP(MFUAuthArgsUnit):
                 )
                 if len(version) == 0:
                     version = None
-            except:
+            except Exception:
                 version = None
 
             # try sending AUTHENTICATE command and observe the result
@@ -4139,7 +4130,7 @@ class HFMFUDUMP(MFUAuthArgsUnit):
                     )
                     != 0
                 )
-            except:
+            except Exception:
                 supports_auth = False
 
             if version is not None and not supports_auth:
@@ -4190,7 +4181,7 @@ class HFMFUDUMP(MFUAuthArgsUnit):
                         )
                     )
                     stop_page = 256
-                except:
+                except Exception:
                     # Regular Ultralight
                     tag_name = "Mifare Ultralight"
                     stop_page = 16
@@ -4252,7 +4243,7 @@ class HFMFUDUMP(MFUAuthArgsUnit):
                     resp_timeout_ms=200,
                     data=struct.pack("!BB", 0x30, i),
                 )
-            except:
+            except Exception:
                 # probably lost tag, but we still need to disable rf field
                 resp = None
 
@@ -4570,9 +4561,6 @@ class HFMFUULCG(ReaderRequiredUnit):
 
     def on_exec(self, args: argparse.Namespace):
         import json
-        import queue
-        import signal
-        import random
 
         if not args.offline:
             challenges = self.collect_challenges(args.challenges)
@@ -4796,7 +4784,7 @@ class HFMFUULCG(ReaderRequiredUnit):
                         crack_effect.stop_event.set()
                         crack_effect.erase_key()
                         print(
-                            f"\n\n\n[-] Error: Unexpected output from mfulc_des_brute\033[?25h"
+                            "\n\n\n[-] Error: Unexpected output from mfulc_des_brute\033[?25h"
                         )
                         break
 
@@ -4842,7 +4830,7 @@ class HFMFUULCG(ReaderRequiredUnit):
             print(f"[+] Found key: {formatted_key}\033[?25h")
             if offline:
                 print(
-                    f"You can restore found key on the card with appropriate write commands"
+                    "You can restore found key on the card with appropriate write commands"
                 )
             else:
                 # Restore the key on the card
@@ -4932,7 +4920,7 @@ class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequired
 
             try:
                 self.cmd.mf0_ntag_set_version_data(args.set_version)
-            except:
+            except Exception:
                 print(
                     color_string((CR, "Tag type does not support GET_VERSION command."))
                 )
@@ -4948,7 +4936,7 @@ class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequired
 
             try:
                 self.cmd.mf0_ntag_set_signature_data(args.set_signature)
-            except:
+            except Exception:
                 print(color_string((CR, "Tag type does not support READ_SIG command.")))
                 return
 
@@ -5025,7 +5013,7 @@ class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequired
                     write_mode = new_write_mode
                 else:
                     print(color_string((CY, "Requested write mode already set")))
-            except:
+            except Exception:
                 print(
                     color_string(
                         (
@@ -5102,7 +5090,7 @@ class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequired
                     self.cmd.mf0_ntag_get_write_mode()
                 )
                 print(f"- {'Write mode:':40}{color_string((CY, write_mode))}")
-            except:
+            except Exception:
                 # Write mode not supported in current firmware
                 pass
 
@@ -5110,13 +5098,13 @@ class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequired
             try:
                 version = self.cmd.mf0_ntag_get_version_data().hex().upper()
                 print(f"- {'Version:':40}{color_string((CY, version))}")
-            except:
+            except Exception:
                 pass
 
             try:
                 signature = self.cmd.mf0_ntag_get_signature_data().hex().upper()
                 print(f"- {'Signature:':40}{color_string((CY, signature))}")
-            except:
+            except Exception:
                 pass
 
             try:
@@ -5126,7 +5114,7 @@ class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequired
                     else color_string((CR, "disabled"))
                 )
                 print(f"- {'Log (password) mode:':40}{f'{detection}'}")
-            except:
+            except Exception:
                 pass
 
 

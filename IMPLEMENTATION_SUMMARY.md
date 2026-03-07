@@ -20,6 +20,7 @@ Successfully implemented comprehensive device integration for the ChameleonUltra
 ### 1. Main Repository (`pr/310` branch)
 
 #### A. Device Interface Layer
+
 - **File**: `software/script/device_interface.py` (382 lines)
 - **Components**:
   - `DeviceInterface` class: Hardware abstraction layer
@@ -30,6 +31,7 @@ Successfully implemented comprehensive device integration for the ChameleonUltra
   - `DeviceStatus` enum: Connection state tracking
 
 **Key Methods**:
+
 ```python
 detect_device()              # Device detection and validation
 enter_reader_mode()          # Set device to reader mode
@@ -42,6 +44,7 @@ end_session()                # Cleanup
 ```
 
 **Features**:
+
 - ✅ Real ChameleonUltra hardware support
 - ✅ Configurable retry logic with exponential backoff
 - ✅ Device health monitoring
@@ -51,6 +54,7 @@ end_session()                # Cleanup
 - ✅ Error logging and reporting
 
 #### B. Enhanced Fuzzer CLI
+
 - **File**: `software/script/chameleon_cli_unit.py` (440+ lines HFMFFuzzer)
 - **Changes**:
   - Device interface integration
@@ -61,6 +65,7 @@ end_session()                # Cleanup
   - Session statistics display
 
 **Example Usage**:
+
 ```bash
 # Basic fuzzing
 chameleon-fuzzer -i 100 -m bit
@@ -73,6 +78,7 @@ chameleon-fuzzer -i 500 -m byte -o results.csv --verbose
 ```
 
 #### C. Documentation & Examples
+
 - **DEVICE_INTEGRATION.md** (450+ lines)
   - Architecture overview
   - API reference with code examples
@@ -95,17 +101,43 @@ chameleon-fuzzer -i 500 -m byte -o results.csv --verbose
   - Result export
 
 #### D. UI Enhancements
+
 - **File**: `software/script/chameleon_cli_main.py`
 - **Improvements**:
   - Radio antenna decorations (~ ~ ~) above/below banner
+  - 📡 Radio transmitter emojis replacing color blocks in ULTRA/LITE/BANNER
   - ULTRA ASCII art branding
-  - Banner color changed to bright green
+  - Banner color: bright green (CG)
   - Code formatting improvements
   - String quote normalization
+
+#### E. Auto-Scan on Connect
+
+- **File**: `software/script/chameleon_cli_unit.py` (HWConnect class)
+- **Features**:
+  - Automatic reader mode switch on device connect
+  - HF antenna scan (13.56 MHz) — detects MIFARE Classic, Ultralight, DESFire, NTAG
+  - LF antenna scan (125 kHz) — detects EM410x tags
+  - Displays UID, SAK, ATQA, and tag type for HF cards
+  - Displays EM410x UID for LF cards
+  - Graceful fallback when no cards detected
+
+- **New**: `hw scan` command for on-demand antenna scanning
+
+#### F. Code Quality Improvements
+
+- **Files**: `chameleon_cli_unit.py`, `chameleon_cli_main.py`, `hex_to_decimal.py`, `verify_fuzzer.py`
+- **Fixes**:
+  - Replaced 16 bare `except:` clauses with `except Exception:`
+  - Replaced broad `except Exception:` with `except UnexpectedResponseError:` for device communication
+  - Removed 10+ unnecessary f-strings (no interpolation)
+  - Removed 3 unused imports (`queue`, `signal`, `random`)
+  - Corrected HF/LF scan API usage to match `@expect_response` decorator return values
 
 ### 2. Standalone Repository (`ChameleonUltra-Fuzzer`)
 
 #### A. Device Interface Adaptation
+
 - **File**: `chameleon_fuzzer/device_interface.py` (270 lines)
 - **Features**:
   - Hardware-optional design
@@ -115,6 +147,7 @@ chameleon-fuzzer -i 500 -m byte -o results.csv --verbose
   - Extensible architecture
 
 **Unique Capability**:
+
 ```python
 # Works with real hardware
 device = DeviceInterface(port="/dev/ttyUSB0")
@@ -124,6 +157,7 @@ device = DeviceInterface()  # Simulator mode
 ```
 
 #### B. Enhanced Fuzzer Core
+
 - **File**: `chameleon_fuzzer/fuzzer.py`
 - **Updates**:
   - Device-aware RFIDFuzzer class
@@ -134,6 +168,7 @@ device = DeviceInterface()  # Simulator mode
   - Health check integration
 
 #### C. CLI Integration
+
 - **File**: `chameleon_fuzzer/cli.py`
 - **Enhancements**:
   - `--device` option for real hardware
@@ -143,8 +178,10 @@ device = DeviceInterface()  # Simulator mode
   - Error handling and recovery
 
 #### D. Public API Exports
+
 - **File**: `chameleon_fuzzer/__init__.py`
 - **Exports**:
+
   ```python
   from chameleon_fuzzer import (
       RFIDFuzzer,
@@ -161,6 +198,7 @@ device = DeviceInterface()  # Simulator mode
   ```
 
 #### E. Test Suite
+
 - **File**: `tests/test_device_integration.py`
 - **Coverage**: 16 test cases (all passing ✅)
   - Device interface creation
@@ -177,7 +215,7 @@ device = DeviceInterface()  # Simulator mode
 
 ### Layered Design
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │     User Application / CLI              │
 ├─────────────────────────────────────────┤
@@ -191,7 +229,7 @@ device = DeviceInterface()  # Simulator mode
 
 ### Component Interactions
 
-```
+```text
 Mutation Engine ──┐
                   ├─→ Authentication Test ──→ DeviceInterface ──→ Real/Simulated Device
 Session Tracker ──┤
@@ -206,12 +244,14 @@ Response ←── Health Monitor (periodic checks)
 ## Features Implemented
 
 ### ✅ Device Communication
+
 - Real ChameleonUltra hardware support
 - Automatic device detection
 - Multiple device mode support (Reader, Tag)
 - Platform-specific serial port handling
 
 ### ✅ Error Handling & Recovery
+
 - Retry logic with exponential backoff
 - Timeout detection and handling
 - Automatic connection recovery
@@ -219,6 +259,7 @@ Response ←── Health Monitor (periodic checks)
 - Graceful error reporting
 
 ### ✅ Session Management
+
 - Real-time statistics collection
 - Mutation counting
 - Success/failure tracking
@@ -226,6 +267,7 @@ Response ←── Health Monitor (periodic checks)
 - Error logging
 
 ### ✅ Monitoring & Diagnostics
+
 - Real-time progress reporting
 - Device health checks every N iterations
 - Throughput calculation
@@ -233,6 +275,7 @@ Response ←── Health Monitor (periodic checks)
 - Detailed error messages
 
 ### ✅ Flexibility
+
 - Simulator mode for development
 - Hardware-optional design
 - Configurable timeouts and retries
@@ -242,7 +285,7 @@ Response ←── Health Monitor (periodic checks)
 
 ## Test Results
 
-```
+```text
 ============================= test session starts ==============================
 platform win32 -- Python 3.12.10, pytest-9.0.2
 collected 16 items
@@ -273,8 +316,9 @@ tests/test_device_integration.py::TestAuthenticationRetries::test_auth_with_retr
 
 ### Main Repository (`pr/310`)
 
-**Commit 1: Device Integration Core**
-```
+#### Commit 1: Device Integration Core
+
+```text
 commit d1bc6f6 (feat: Add device integration layer to RFID Fuzzer)
 - DeviceInterface abstraction (424 lines)
 - HFMFFuzzer class enhancement (124 → 440+ lines)
@@ -284,8 +328,9 @@ commit d1bc6f6 (feat: Add device integration layer to RFID Fuzzer)
 - Health monitoring
 ```
 
-**Commit 2: Documentation & Examples**
-```
+#### Commit 2: Documentation & Examples
+
+```text
 commit ee5a933 (docs: Add comprehensive device integration documentation)
 - DEVICE_INTEGRATION.md (450+ lines)
 - example_device_integration.py (7 examples)
@@ -294,13 +339,26 @@ commit ee5a933 (docs: Add comprehensive device integration documentation)
 - Usage patterns
 ```
 
-**Commit 3: UI Enhancements**
-```
+#### Commit 3: UI Enhancements
+
+```text
 commit fe08cda (style: Enhance CLI banner with ULTRA branding)
-- Radio antenna decorations
+- Radio antenna decorations (~ ~ ~ and 📡 emojis)
 - ULTRA ASCII art
 - Green banner color
 - Code formatting
+```
+
+#### Commit 4: Auto-Scan & Code Quality
+
+```text
+- Auto-scan HF/LF antennas on hw connect
+- hw scan command for on-demand scanning
+- Auto reader mode switch on connect
+- Bare except → except Exception fixes
+- Broad except → UnexpectedResponseError for device I/O
+- Unnecessary f-string removal
+- Unused import cleanup
 ```
 
 ---
@@ -308,6 +366,7 @@ commit fe08cda (style: Enhance CLI banner with ULTRA branding)
 ## Usage Examples
 
 ### Example 1: Basic Simulation
+
 ```python
 from chameleon_fuzzer import RFIDFuzzer, MutationStrategy
 
@@ -321,6 +380,7 @@ fuzzer.print_summary()
 ```
 
 ### Example 2: Real Hardware
+
 ```python
 from chameleon_fuzzer import RFIDFuzzer, DeviceInterface
 
@@ -337,6 +397,7 @@ fuzzer.export_results("results.csv")
 ```
 
 ### Example 3: CLI Usage
+
 ```bash
 # Simulator
 chameleon-fuzzer -i 100 -m bit -o results.csv
@@ -351,7 +412,7 @@ chameleon-fuzzer --device /dev/ttyUSB0 -i 1000 \
 ## Performance Characteristics
 
 | Metric | Value | Notes |
-|--------|-------|-------|
+| -------- | ------- | ------- |
 | Simulation Speed | ~100-200 ops/sec | No device communication |
 | Device Speed | 5-50 ops/sec | Depends on device/USB speed |
 | Health Check Overhead | <1% | When enabled every 50 iterations |
@@ -363,16 +424,19 @@ chameleon-fuzzer --device /dev/ttyUSB0 -i 1000 \
 ## Platform Support
 
 ### Tested Platforms
+
 - ✅ Windows 10/11 (Python 3.12)
 - ✅ Linux (serial port support simulated)
 - ✅ macOS (serial port support simulated)
 
 ### Device Support
+
 - ✅ ChameleonUltra (primary)
 - ✅ USB-to-Serial adapters
 - ✅ Virtual simulators
 
 ### Python Versions
+
 - ✅ Python 3.8+
 - ✅ Tested on 3.12.10
 
@@ -381,7 +445,7 @@ chameleon-fuzzer --device /dev/ttyUSB0 -i 1000 \
 ## Code Statistics
 
 | Component | Lines | Status |
-|-----------|-------|--------|
+| ----------- | ------- | -------- |
 | device_interface.py (main) | 382 | ✅ Complete |
 | device_interface.py (standalone) | 270 | ✅ Complete |
 | chameleon_cli_unit.py (HFMFFuzzer) | 440+ | ✅ Complete |
@@ -397,18 +461,21 @@ chameleon-fuzzer --device /dev/ttyUSB0 -i 1000 \
 ## Future Enhancement Opportunities
 
 ### Short Term (Priority)
+
 1. Multi-device fuzzing support
 2. Device profile presets (standard test configurations)
 3. Block-level read/write integration
 4. Authentication key dictionary mode
 
 ### Medium Term
+
 1. Real-time device telemetry
 2. Distributed fuzzing across multiple devices
 3. Advanced statistics and analysis
 4. Web-based dashboard for monitoring
 
 ### Long Term
+
 1. Machine learning integration for fuzzing optimization
 2. Cloud-based result storage and sharing
 3. Hardware security testing framework
@@ -450,6 +517,7 @@ The device integration layer successfully abstracts hardware communication while
 **Status**: 🟢 **Ready for Production**
 
 **Next Steps**:
+
 1. Deploy pr/310 branch for review
 2. Gather feedback from security researchers
 3. Plan multi-device support phase
@@ -460,6 +528,7 @@ The device integration layer successfully abstracts hardware communication while
 ## Contact & Support
 
 For issues or questions regarding device integration:
+
 1. Check DEVICE_INTEGRATION.md troubleshooting section
 2. Review example_device_integration.py for usage patterns
 3. Examine test_device_integration.py for implementation details
@@ -468,4 +537,5 @@ For issues or questions regarding device integration:
 ---
 
 *Generated: February 13, 2026*  
+*Updated: March 6, 2026*  
 *Implementation Phase: Device Integration - Complete*

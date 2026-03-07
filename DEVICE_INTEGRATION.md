@@ -8,7 +8,7 @@ The ChameleonUltra RFID Fuzzer now features comprehensive device integration for
 
 ### Two-Tier Architecture
 
-```
+```text
 User Application
         ↓
   Fuzzer CLI
@@ -196,7 +196,7 @@ fuzzer = RFIDFuzzer(device_interface=device)
 ### Device Options
 
 | Option | Default | Description |
-|--------|---------|-------------|
+| -------- | --------- | ------------- |
 | `--device` | None | Serial port for device (e.g., /dev/ttyUSB0, COM3) |
 | `--retries` | 1 | Retry attempts on timeout |
 | `--health-check` | 0 | Device health check interval (0=disabled) |
@@ -205,12 +205,14 @@ fuzzer = RFIDFuzzer(device_interface=device)
 ### Device Detection
 
 The fuzzer automatically detects devices on:
+
 - Linux/macOS: `/dev/ttyUSB*`, `/dev/ttyACM*`, `/dev/cu.*`
 - Windows: `COM1` through `COM32`
 
 ### Connection Parameters
 
 Default timeouts and retry logic:
+
 - **Timeout**: 1000ms per operation
 - **Retries**: 3 attempts with exponential backoff
 - **Health Check**: Validates device responsiveness
@@ -371,11 +373,12 @@ pytest tests/test_device_integration.py -v -s
 
 ### Device Not Found
 
-```
+```text
 Error: Device not found on /dev/ttyUSB0
 ```
 
 **Solutions:**
+
 1. Check device is connected: `ls -la /dev/tty*`
 2. Check permissions: `sudo chmod 666 /dev/ttyUSB0`
 3. Verify device drivers installed
@@ -383,11 +386,12 @@ Error: Device not found on /dev/ttyUSB0
 
 ### Timeout Errors
 
-```
+```text
 Error: Timeout waiting for device response
 ```
 
 **Solutions:**
+
 1. Increase retries: `--retries 5`
 2. Check device responsiveness: `--health-check 10`
 3. Reduce load: Increase `--slowdown 0.1`
@@ -395,11 +399,12 @@ Error: Timeout waiting for device response
 
 ### Connection Lost
 
-```
+```text
 Error: Device disconnected during fuzzing
 ```
 
 **Solutions:**
+
 1. Check USB cable connection
 2. Increase timeout: Device timeout_ms parameter
 3. Enable automatic recovery: Device monitors continuously
@@ -461,11 +466,13 @@ print(f"Total time: {duration:.2f} seconds")
 ## Repository Locations
 
 ### Main Repository
+
 - **Path**: `software/script/device_interface.py`
 - **CLI**: `software/script/chameleon_cli_unit.py` (HFMFFuzzer class)
 - **Branch**: `pr/310`
 
 ### Standalone Repository
+
 - **Path**: `chameleon_fuzzer/device_interface.py`
 - **Fuzzer**: `chameleon_fuzzer/fuzzer.py`
 - **CLI**: `chameleon_fuzzer/cli.py`
@@ -480,6 +487,7 @@ print(f"Total time: {duration:.2f} seconds")
 ## Contributing
 
 Device integration improvements welcome:
+
 1. Test on real hardware
 2. Report issues with device models
 3. Suggest recovery mechanisms
@@ -488,3 +496,5 @@ Device integration improvements welcome:
 ## License
 
 Same as ChameleonUltra project (MIT)
+
+## Written, compiled, tested, and uploaded to GitHub by ## @gokingsgo805 on 03.05.2026 @ 2:03:46 MST
